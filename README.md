@@ -1,0 +1,186 @@
+# Dorico MCP Server
+
+🎵 **Control Dorico via Claude Desktop** - A gift for composition majors (작곡 전공자)
+
+This MCP (Model Context Protocol) server enables natural language control of Steinberg Dorico music notation software through Claude Desktop.
+
+## Features
+
+### 🎹 Core Score Tools
+- Create new scores with custom instruments
+- Save and export scores (PDF, MusicXML)
+- Navigate through the score
+
+### 🎼 Note Input
+- Add notes with pitch, duration, and articulation
+- Create chords
+- Add rests and ties
+
+### 📝 Notation
+- Set key signatures (all major and minor keys)
+- Set time signatures
+- Add dynamics (pp, p, mp, mf, f, ff, etc.)
+- Add tempo markings
+- Add slurs and articulations
+
+### 🎵 Harmony Tools (화성학)
+- Analyze chord quality and Roman numerals
+- Suggest next chords based on context
+- Generate chord progressions
+- Check voice leading rules (parallel 5ths/8ves)
+
+### 🎻 Orchestration Tools (오케스트레이션)
+- Complete instrument database with ranges
+- Check playability (instrument range validation)
+- Transposition for transposing instruments
+
+### 📋 Guided Workflows (Prompts)
+- Harmonize a melody
+- Orchestrate piano scores
+- Species counterpoint exercises
+
+## Installation
+
+### Prerequisites
+- Python 3.11+
+- Steinberg Dorico (with Remote Control enabled)
+- Claude Desktop
+
+### Install the package
+
+```bash
+cd dorico-mcp-server
+pip install -e ".[dev]"
+```
+
+### Enable Dorico Remote Control
+
+1. Open Dorico
+2. Go to **Preferences** → **General**
+3. Enable **Allow remote control**
+4. Note the port number (usually 4560)
+
+### Configure Claude Desktop
+
+Add to your Claude Desktop configuration (`~/.config/claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "dorico": {
+      "command": "python",
+      "args": ["-m", "dorico_mcp.server", "--stdio"],
+      "cwd": "/path/to/dorico-mcp-server/src",
+      "env": {
+        "PYTHONPATH": "/path/to/dorico-mcp-server/src"
+      }
+    }
+  }
+}
+```
+
+## Usage Examples
+
+### Creating a Score
+
+```
+"Create a new score for string quartet in G major, 3/4 time, tempo 120"
+```
+
+### Adding Notes
+
+```
+"Add a C major chord (C4, E4, G4) as quarter notes"
+"Add a melody: C4, D4, E4, F4, G4 as eighth notes"
+```
+
+### Harmony Analysis
+
+```
+"What chord would work well after I-IV-V?"
+"Generate a 8-bar chord progression in A minor with an authentic cadence"
+```
+
+### Orchestration Help
+
+```
+"Is F2 playable on the violin?"
+"What's the comfortable range for French horn?"
+"What transposition does the Bb clarinet use?"
+```
+
+## Development
+
+### Run tests
+
+```bash
+pytest
+```
+
+### Type checking
+
+```bash
+mypy src/dorico_mcp
+```
+
+### Linting
+
+```bash
+ruff check src/dorico_mcp
+```
+
+## Architecture
+
+```
+dorico-mcp-server/
+├── src/dorico_mcp/
+│   ├── __init__.py         # Package exports
+│   ├── server.py           # FastMCP server with tools/resources/prompts
+│   ├── client.py           # Dorico WebSocket client
+│   ├── commands.py         # Dorico command builders (pure functions)
+│   ├── models.py           # Pydantic models
+│   └── tools/
+│       ├── __init__.py     # Harmony analysis
+│       └── instruments.py  # Instrument database
+├── tests/                  # Pytest tests
+├── docs/                   # Documentation
+└── examples/               # Usage examples
+```
+
+## Dorico Remote Control API
+
+This server communicates with Dorico via its WebSocket-based Remote Control API:
+
+- **Protocol**: WebSocket (JSON messages)
+- **Port**: Dynamic (usually 4560-4565)
+- **Authentication**: Session token (stored locally after first approval)
+
+### Key Limitations
+
+- **Read access is limited**: Can only read currently selected items
+- **Write-focused**: Best for sending commands/input
+- **Full score reading**: Requires MusicXML export
+
+## Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Submit a pull request
+
+## License
+
+MIT License
+
+## Acknowledgments
+
+- [AbletonMCP](https://github.com/ahujasid/ableton-mcp) - Inspiration for MCP structure
+- [MuseScore-MCP](https://github.com/JordanSucher/musescore-mcp) - Notation MCP reference
+- [Dorico.Net](https://github.com/scott-janssens/Dorico.Net) - Dorico API documentation
+- [music21](https://web.mit.edu/music21/) - Music theory analysis
+
+---
+
+Made with ❤️ for composition majors everywhere

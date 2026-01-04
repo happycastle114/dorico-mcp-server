@@ -1,0 +1,72 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dorico-mcp-server"
+version = "0.1.0"
+description = "MCP Server for controlling Dorico via Claude Desktop - A gift for composition majors"
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "Your Name", email = "your.email@example.com" }
+]
+keywords = ["dorico", "mcp", "music", "notation", "composition", "ai"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Artistic Software",
+]
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=1.0.0",
+    "websockets>=12.0",
+    "pydantic>=2.0",
+    "music21>=9.1.0",
+    "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4.0",
+    "ruff>=0.4",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+dorico-mcp = "dorico_mcp.server:main"
+
+[project.urls]
+Homepage = "https://github.com/yourusername/dorico-mcp-server"
+Documentation = "https://github.com/yourusername/dorico-mcp-server#readme"
+Repository = "https://github.com/yourusername/dorico-mcp-server.git"
+Issues = "https://github.com/yourusername/dorico-mcp-server/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dorico_mcp"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-v --cov=dorico_mcp --cov-report=term-missing"

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "dorico": {
+      "command": "python",
+      "args": ["-m", "dorico_mcp.server", "--stdio"],
+      "cwd": "/path/to/dorico-mcp-server/src",
+      "env": {
+        "PYTHONPATH": "/path/to/dorico-mcp-server/src"
+      }
+    }
+  }
+}
