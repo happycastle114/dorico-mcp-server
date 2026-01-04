@@ -1,6 +1,6 @@
 # Dorico MCP Server - Setup Guide
 
-Complete guide to setting up and using the Dorico MCP Server with Claude Desktop.
+Complete guide to setting up and using the Dorico MCP Server with Claude Desktop and ChatGPT Desktop.
 
 ## Table of Contents
 
@@ -21,8 +21,8 @@ Complete guide to setting up and using the Dorico MCP Server with Claude Desktop
 |----------|---------|---------|
 | Python | 3.11+ | Runtime |
 | Steinberg Dorico | 5.0+ | Music notation software |
-| Claude Desktop | Latest | AI interface |
-| Git | Latest | Version control |
+| Claude Desktop or ChatGPT Desktop | Latest | AI interface |
+| Git | Latest | Version control (for development) |
 
 ### System Requirements
 
@@ -34,14 +34,30 @@ Complete guide to setting up and using the Dorico MCP Server with Claude Desktop
 
 ## Installation
 
-### Step 1: Clone the Repository
+### Option 1: Install from PyPI (Recommended)
+
+The easiest way to install:
 
 ```bash
-git clone https://github.com/yourusername/dorico-mcp-server.git
+pip install dorico-mcp-server
+```
+
+Or with a specific version:
+
+```bash
+pip install dorico-mcp-server==0.1.0
+```
+
+### Option 2: Install from Source (Development)
+
+#### Step 1: Clone the Repository
+
+```bash
+git clone https://github.com/happycastle114/dorico-mcp-server.git
 cd dorico-mcp-server
 ```
 
-### Step 2: Create Virtual Environment (Recommended)
+#### Step 2: Create Virtual Environment (Recommended)
 
 ```bash
 # Create virtual environment
@@ -55,7 +71,7 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-### Step 3: Install Dependencies
+#### Step 3: Install Dependencies
 
 ```bash
 # Install in development mode
@@ -69,14 +85,14 @@ This installs:
 - `music21` - Music theory analysis
 - `pytest` - Testing framework
 
-### Step 4: Verify Installation
+### Verify Installation
 
 ```bash
-# Run tests to verify everything works
-pytest tests/ -v
+# Check the package is installed
+python -c "import dorico_mcp; print('OK')"
 
-# Or just run unit tests (no mock server needed)
-pytest tests/test_commands.py tests/test_models.py -v
+# Run tests to verify everything works (if installed from source)
+pytest tests/ -v
 ```
 
 ---
@@ -93,6 +109,8 @@ pytest tests/test_commands.py tests/test_models.py -v
 6. Note the **Port number** (default: 4560)
 7. Click **Apply** and **OK**
 
+---
+
 ### Configure Claude Desktop
 
 Add the Dorico MCP server to your Claude Desktop configuration:
@@ -101,6 +119,19 @@ Add the Dorico MCP server to your Claude Desktop configuration:
 
 Edit `%APPDATA%\Claude\claude_desktop_config.json`:
 
+**If installed via pip:**
+```json
+{
+  "mcpServers": {
+    "dorico": {
+      "command": "python",
+      "args": ["-m", "dorico_mcp.server", "--stdio"]
+    }
+  }
+}
+```
+
+**If installed from source:**
 ```json
 {
   "mcpServers": {
@@ -120,6 +151,19 @@ Edit `%APPDATA%\Claude\claude_desktop_config.json`:
 
 Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
+**If installed via pip:**
+```json
+{
+  "mcpServers": {
+    "dorico": {
+      "command": "python3",
+      "args": ["-m", "dorico_mcp.server", "--stdio"]
+    }
+  }
+}
+```
+
+**If installed from source:**
 ```json
 {
   "mcpServers": {
@@ -139,6 +183,19 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 Edit `~/.config/Claude/claude_desktop_config.json`:
 
+**If installed via pip:**
+```json
+{
+  "mcpServers": {
+    "dorico": {
+      "command": "python",
+      "args": ["-m", "dorico_mcp.server", "--stdio"]
+    }
+  }
+}
+```
+
+**If installed from source:**
 ```json
 {
   "mcpServers": {
@@ -154,9 +211,111 @@ Edit `~/.config/Claude/claude_desktop_config.json`:
 }
 ```
 
-### Restart Claude Desktop
+**Restart Claude Desktop** after updating the configuration.
 
-After updating the configuration, restart Claude Desktop for changes to take effect.
+---
+
+### Configure ChatGPT Desktop App
+
+ChatGPT Desktop also supports MCP servers. Add the Dorico MCP server to your configuration:
+
+#### Windows
+
+Edit `%LOCALAPPDATA%\com.openai.chat\mcp.json`:
+
+**If installed via pip:**
+```json
+{
+  "mcpServers": {
+    "dorico": {
+      "command": "python",
+      "args": ["-m", "dorico_mcp.server", "--stdio"]
+    }
+  }
+}
+```
+
+**If installed from source:**
+```json
+{
+  "mcpServers": {
+    "dorico": {
+      "command": "python",
+      "args": ["-m", "dorico_mcp.server", "--stdio"],
+      "cwd": "C:\\path\\to\\dorico-mcp-server\\src",
+      "env": {
+        "PYTHONPATH": "C:\\path\\to\\dorico-mcp-server\\src"
+      }
+    }
+  }
+}
+```
+
+#### macOS
+
+Edit `~/Library/Application Support/com.openai.chat/mcp.json`:
+
+**If installed via pip:**
+```json
+{
+  "mcpServers": {
+    "dorico": {
+      "command": "python3",
+      "args": ["-m", "dorico_mcp.server", "--stdio"]
+    }
+  }
+}
+```
+
+**If installed from source:**
+```json
+{
+  "mcpServers": {
+    "dorico": {
+      "command": "python3",
+      "args": ["-m", "dorico_mcp.server", "--stdio"],
+      "cwd": "/Users/yourname/dorico-mcp-server/src",
+      "env": {
+        "PYTHONPATH": "/Users/yourname/dorico-mcp-server/src"
+      }
+    }
+  }
+}
+```
+
+#### Linux
+
+Edit `~/.config/com.openai.chat/mcp.json`:
+
+**If installed via pip:**
+```json
+{
+  "mcpServers": {
+    "dorico": {
+      "command": "python",
+      "args": ["-m", "dorico_mcp.server", "--stdio"]
+    }
+  }
+}
+```
+
+**If installed from source:**
+```json
+{
+  "mcpServers": {
+    "dorico": {
+      "command": "python",
+      "args": ["-m", "dorico_mcp.server", "--stdio"],
+      "cwd": "/home/yourname/dorico-mcp-server/src",
+      "env": {
+        "PYTHONPATH": "/home/yourname/dorico-mcp-server/src"
+      }
+    }
+  }
+}
+```
+
+**Restart ChatGPT Desktop** after updating the configuration.
 
 ---
 
@@ -165,8 +324,8 @@ After updating the configuration, restart Claude Desktop for changes to take eff
 ### First Connection
 
 1. **Start Dorico** and ensure Remote Control is enabled
-2. **Open Claude Desktop**
-3. Ask Claude to connect:
+2. **Open Claude Desktop** or **ChatGPT Desktop**
+3. Ask the AI to connect:
 
 ```
 Connect to Dorico
@@ -333,7 +492,12 @@ Use standard notation: Note name + octave
 
 #### "Module not found"
 
-Ensure the virtual environment is activated:
+If installed via pip:
+```bash
+pip install dorico-mcp-server
+```
+
+If installed from source, ensure the virtual environment is activated:
 ```bash
 source .venv/bin/activate  # macOS/Linux
 .venv\Scripts\activate     # Windows
@@ -343,6 +507,8 @@ source .venv/bin/activate  # macOS/Linux
 
 Reinstall dependencies:
 ```bash
+pip install dorico-mcp-server
+# Or if from source:
 pip install -e ".[dev]"
 ```
 
@@ -351,8 +517,9 @@ pip install -e ".[dev]"
 #### "MCP server not found"
 
 1. Check the path in `claude_desktop_config.json`
-2. Use absolute paths, not relative
+2. Use absolute paths, not relative (for source install)
 3. Ensure Python is in your PATH
+4. Try using the full path to python executable
 
 #### "Server crashed"
 
@@ -360,6 +527,20 @@ Check the logs:
 - macOS: `~/Library/Logs/Claude/`
 - Windows: `%APPDATA%\Claude\logs\`
 - Linux: `~/.config/Claude/logs/`
+
+### ChatGPT Desktop Issues
+
+#### "MCP server not found"
+
+1. Check the path in `mcp.json`
+2. Use absolute paths, not relative (for source install)
+3. Ensure Python is in your PATH
+
+#### "Server not responding"
+
+1. Try restarting ChatGPT Desktop
+2. Check that no other process is using the same port
+3. Verify Dorico is running and Remote Control is enabled
 
 ---
 
@@ -410,8 +591,8 @@ dorico-mcp-server/
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/dorico-mcp-server/issues)
-- **Documentation**: [GitHub Wiki](https://github.com/yourusername/dorico-mcp-server/wiki)
+- **Issues**: [GitHub Issues](https://github.com/happycastle114/dorico-mcp-server/issues)
+- **PyPI**: [dorico-mcp-server](https://pypi.org/project/dorico-mcp-server/)
 
 ---
 

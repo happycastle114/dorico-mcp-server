@@ -1,8 +1,13 @@
 # Dorico MCP Server
 
-🎵 **Control Dorico via Claude Desktop** - A gift for composition majors
+🎵 **Control Dorico via Claude Desktop or ChatGPT** - A gift for composition majors
 
-This MCP (Model Context Protocol) server enables natural language control of Steinberg Dorico music notation software through Claude Desktop.
+[![PyPI version](https://badge.fury.io/py/dorico-mcp-server.svg)](https://badge.fury.io/py/dorico-mcp-server)
+[![CI](https://github.com/happycastle114/dorico-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/happycastle114/dorico-mcp-server/actions/workflows/ci.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+This MCP (Model Context Protocol) server enables natural language control of Steinberg Dorico music notation software through Claude Desktop or ChatGPT Desktop.
 
 ## Features
 
@@ -44,11 +49,18 @@ This MCP (Model Context Protocol) server enables natural language control of Ste
 ### Prerequisites
 - Python 3.11+
 - Steinberg Dorico (with Remote Control enabled)
-- Claude Desktop
+- Claude Desktop or ChatGPT Desktop
 
-### Install the package
+### Install from PyPI (Recommended)
 
 ```bash
+pip install dorico-mcp-server
+```
+
+### Install from Source (Development)
+
+```bash
+git clone https://github.com/happycastle114/dorico-mcp-server.git
 cd dorico-mcp-server
 pip install -e ".[dev]"
 ```
@@ -60,24 +72,47 @@ pip install -e ".[dev]"
 3. Enable **Allow remote control**
 4. Note the port number (usually 4560)
 
-### Configure Claude Desktop
+## Configuration
 
-Add to your Claude Desktop configuration (`~/.config/claude/claude_desktop_config.json`):
+### Claude Desktop
+
+Add to your Claude Desktop configuration:
+
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+**Linux**: `~/.config/Claude/claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
     "dorico": {
       "command": "python",
-      "args": ["-m", "dorico_mcp.server", "--stdio"],
-      "cwd": "/path/to/dorico-mcp-server/src",
-      "env": {
-        "PYTHONPATH": "/path/to/dorico-mcp-server/src"
-      }
+      "args": ["-m", "dorico_mcp.server", "--stdio"]
     }
   }
 }
 ```
+
+### ChatGPT Desktop
+
+Add to your ChatGPT Desktop configuration:
+
+**macOS**: `~/Library/Application Support/com.openai.chat/mcp.json`
+**Windows**: `%LOCALAPPDATA%\com.openai.chat\mcp.json`
+**Linux**: `~/.config/com.openai.chat/mcp.json`
+
+```json
+{
+  "mcpServers": {
+    "dorico": {
+      "command": "python",
+      "args": ["-m", "dorico_mcp.server", "--stdio"]
+    }
+  }
+}
+```
+
+> **Note**: Restart the app after updating the configuration.
 
 ## Usage Examples
 
