@@ -11,6 +11,9 @@ jobs:
     permissions:
       contents: write
       id-token: write
+    environment:
+      name: pypi
+      url: https://pypi.org/p/dorico-mcp-server
 
     steps:
       - name: Checkout code
