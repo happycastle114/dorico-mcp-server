@@ -1,6 +1,6 @@
 # Dorico MCP Server
 
-🎵 **Control Dorico via Claude Desktop** - A gift for composition majors (작곡 전공자)
+🎵 **Control Dorico via Claude Desktop** - A gift for composition majors
 
 This MCP (Model Context Protocol) server enables natural language control of Steinberg Dorico music notation software through Claude Desktop.
 
