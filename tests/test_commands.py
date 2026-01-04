@@ -2,7 +2,6 @@
 Tests for Dorico command builders.
 """
 
-
 from dorico_mcp.commands import (
     add_dynamic,
     add_key_signature,

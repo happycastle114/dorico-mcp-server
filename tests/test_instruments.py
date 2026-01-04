@@ -2,7 +2,6 @@
 Tests for instrument database.
 """
 
-
 from dorico_mcp.tools.instruments import (
     INSTRUMENTS,
     InstrumentFamily,

@@ -2,7 +2,6 @@
 Tests for harmony analysis tools.
 """
 
-
 from dorico_mcp.tools import (
     COMMON_PROGRESSIONS,
     analyze_chord_quality,

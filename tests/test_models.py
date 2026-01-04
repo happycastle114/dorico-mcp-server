@@ -2,7 +2,6 @@
 Tests for Pydantic models.
 """
 
-
 from dorico_mcp.models import (
     DoricoCommand,
     KeyMode,
