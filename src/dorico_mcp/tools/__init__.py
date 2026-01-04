@@ -9,7 +9,7 @@ from typing import Any
 
 try:
     import music21
-    from music21 import chord, key, roman, stream
+    from music21 import chord, key, roman
 
     MUSIC21_AVAILABLE = True
 except ImportError:
@@ -181,7 +181,11 @@ def suggest_next_chord(
             {"chord": "ii", "reason": "Supertonic - descending bass", "probability": 0.2},
         ],
         "V": [
-            {"chord": "I", "reason": "Authentic cadence - strongest resolution", "probability": 0.5},
+            {
+                "chord": "I",
+                "reason": "Authentic cadence - strongest resolution",
+                "probability": 0.5,
+            },
             {"chord": "vi", "reason": "Deceptive cadence - unexpected", "probability": 0.2},
             {"chord": "IV", "reason": "Retrogression - back-cycling", "probability": 0.1},
         ],
@@ -230,7 +234,7 @@ def generate_progression(
     if style in COMMON_PROGRESSIONS:
         style_progs = COMMON_PROGRESSIONS[style]
         # Pick a progression that fits the length
-        for name, prog in style_progs.items():
+        for _name, prog in style_progs.items():
             if len(prog) >= length:
                 base_prog = prog[:length]
                 break
@@ -251,11 +255,13 @@ def generate_progression(
             base_prog[-2:] = ["V", "vi"]
 
     for i, rn in enumerate(base_prog):
-        result.append({
-            "position": i + 1,
-            "roman_numeral": rn,
-            "function": _get_harmonic_function(rn),
-        })
+        result.append(
+            {
+                "position": i + 1,
+                "roman_numeral": rn,
+                "function": _get_harmonic_function(rn),
+            }
+        )
 
     return result
 
@@ -296,30 +302,39 @@ def check_voice_leading(
 
             # Check for parallel fifths
             if interval_start.simpleName == "P5" and interval_end.simpleName == "P5":
-                issues.append({
-                    "type": "parallel_fifths",
-                    "location": f"beats {i + 1}-{i + 2}",
-                    "severity": "error",
-                    "description": "Parallel perfect fifths detected",
-                })
+                issues.append(
+                    {
+                        "type": "parallel_fifths",
+                        "location": f"beats {i + 1}-{i + 2}",
+                        "severity": "error",
+                        "description": "Parallel perfect fifths detected",
+                    }
+                )
 
             # Check for parallel octaves
-            if interval_start.simpleName in ["P1", "P8"] and interval_end.simpleName in ["P1", "P8"]:
-                issues.append({
-                    "type": "parallel_octaves",
-                    "location": f"beats {i + 1}-{i + 2}",
-                    "severity": "error",
-                    "description": "Parallel octaves/unisons detected",
-                })
+            if interval_start.simpleName in ["P1", "P8"] and interval_end.simpleName in [
+                "P1",
+                "P8",
+            ]:
+                issues.append(
+                    {
+                        "type": "parallel_octaves",
+                        "location": f"beats {i + 1}-{i + 2}",
+                        "severity": "error",
+                        "description": "Parallel octaves/unisons detected",
+                    }
+                )
 
             # Check for voice crossing
             if p1_start.midi > p2_start.midi and p1_end.midi < p2_end.midi:
-                issues.append({
-                    "type": "voice_crossing",
-                    "location": f"beat {i + 2}",
-                    "severity": "warning",
-                    "description": "Voices cross each other",
-                })
+                issues.append(
+                    {
+                        "type": "voice_crossing",
+                        "location": f"beat {i + 2}",
+                        "severity": "warning",
+                        "description": "Voices cross each other",
+                    }
+                )
 
     except Exception as e:
         issues.append({"error": str(e)})

@@ -5,26 +5,20 @@ This is the FastMCP server that Claude Desktop connects to.
 It exposes tools, resources, and prompts for controlling Dorico.
 """
 
-import asyncio
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator
+from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
+from dorico_mcp import commands as cmd
 from dorico_mcp.client import DoricoClient, DoricoConnectionError
 from dorico_mcp.models import (
-    AddDynamicsInput,
-    AddNotesInput,
-    CreateScoreInput,
     Dynamic,
     KeyMode,
     NoteDuration,
-    SetKeySignatureInput,
-    SetTimeSignatureInput,
-    TransposeInput,
 )
-from dorico_mcp import commands as cmd
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -157,9 +151,7 @@ def create_server() -> FastMCP:
                 # Parse and set time signature
                 if "/" in time_signature:
                     num, denom = time_signature.split("/")
-                    await client.send_command(
-                        cmd.add_time_signature(int(num), int(denom))
-                    )
+                    await client.send_command(cmd.add_time_signature(int(num), int(denom)))
 
                 # Parse and set key signature
                 parts = key_signature.lower().split()
@@ -414,9 +406,7 @@ def create_server() -> FastMCP:
                 if bar is not None:
                     await client.send_command(cmd.navigate_go_to_bar(bar))
 
-                response = await client.send_command(
-                    cmd.add_time_signature(numerator, denominator)
-                )
+                response = await client.send_command(cmd.add_time_signature(numerator, denominator))
                 return {
                     "success": response.success,
                     "time_signature": f"{numerator}/{denominator}",
@@ -794,7 +784,7 @@ Use add_instrument() to add instruments, then add_notes() for each part.
         return """
 # Species Counterpoint Exercise
 
-You are helping with a counterpoint exercise. 
+You are helping with a counterpoint exercise.
 
 ## First Species (Note against note)
 Rules:

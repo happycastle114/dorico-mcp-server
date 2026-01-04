@@ -2,7 +2,6 @@
 Tests for Dorico command builders.
 """
 
-import pytest
 
 from dorico_mcp.commands import (
     add_dynamic,

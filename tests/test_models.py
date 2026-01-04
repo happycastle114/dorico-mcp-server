@@ -2,10 +2,8 @@
 Tests for Pydantic models.
 """
 
-import pytest
 
 from dorico_mcp.models import (
-    ChordAnalysis,
     DoricoCommand,
     KeyMode,
     KeySignature,

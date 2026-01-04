@@ -2,7 +2,6 @@
 Tests for instrument database.
 """
 
-import pytest
 
 from dorico_mcp.tools.instruments import (
     INSTRUMENTS,

@@ -5,15 +5,13 @@ These tests use a mock Dorico server to verify the complete flow
 from MCP tool invocation to Dorico command execution.
 """
 
-import asyncio
 import pytest
 import pytest_asyncio
 
-from tests.mock_dorico import MockDoricoServer
+from dorico_mcp import commands as cmd
 from dorico_mcp.client import DoricoClient
 from dorico_mcp.models import KeyMode, NoteDuration
-from dorico_mcp import commands as cmd
-
+from tests.mock_dorico import MockDoricoServer
 
 # Test configuration
 MOCK_PORT = 4599  # Use non-standard port to avoid conflicts

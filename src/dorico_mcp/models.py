@@ -10,7 +10,6 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-
 # =============================================================================
 # Enums for Type Safety
 # =============================================================================
@@ -227,7 +226,9 @@ class ChordAnalysis(BaseModel):
 class VoiceLeadingIssue(BaseModel):
     """Voice leading problem detected."""
 
-    issue_type: str = Field(..., description="Type of issue (parallel_fifths, parallel_octaves, etc.)")
+    issue_type: str = Field(
+        ..., description="Type of issue (parallel_fifths, parallel_octaves, etc.)"
+    )
     description: str = Field(..., description="Human-readable description")
     location: str = Field(..., description="Location in score (bar, beat)")
     severity: str = Field(default="warning", description="Severity: error, warning, info")
@@ -258,7 +259,9 @@ class CreateScoreInput(BaseModel):
         description="List of instrument names",
     )
     time_signature: str = Field(default="4/4", description="Time signature (e.g., '4/4', '3/4')")
-    key_signature: str = Field(default="C major", description="Key signature (e.g., 'C major', 'G minor')")
+    key_signature: str = Field(
+        default="C major", description="Key signature (e.g., 'C major', 'G minor')"
+    )
     tempo: int = Field(default=120, ge=20, le=400, description="Tempo in BPM")
 
 

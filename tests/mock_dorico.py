@@ -63,7 +63,6 @@ class MockDoricoServer:
             "File.Close": self._handle_file_close,
             "File.ExportPDF": self._handle_file_export,
             "File.ExportMusicXML": self._handle_file_export,
-
             # Edit commands
             "Edit.Undo": self._handle_simple_success,
             "Edit.Redo": self._handle_simple_success,
@@ -84,7 +83,6 @@ class MockDoricoServer:
             "Edit.TransposeUpOctave": self._handle_simple_success,
             "Edit.TransposeDownOctave": self._handle_simple_success,
             "Edit.TransposeChromatic": self._handle_simple_success,
-
             # Note input commands
             "NoteInput.Enter": self._handle_note_input_enter,
             "NoteInput.Exit": self._handle_note_input_exit,
@@ -95,25 +93,21 @@ class MockDoricoServer:
             "NoteInput.Dot": self._handle_simple_success,
             "NoteInput.ChordModeOn": self._handle_simple_success,
             "NoteInput.ChordModeOff": self._handle_simple_success,
-
             # Navigation commands
             "Navigate.NextBar": self._handle_navigate_next_bar,
             "Navigate.PreviousBar": self._handle_navigate_previous_bar,
             "Navigate.GoToBar": self._handle_navigate_go_to_bar,
             "Navigate.Start": self._handle_navigate_start,
             "Navigate.End": self._handle_simple_success,
-
             # View commands
             "View.WriteMode": self._handle_view_mode,
             "View.EngraveMode": self._handle_view_mode,
             "View.PlayMode": self._handle_view_mode,
             "View.PrintMode": self._handle_view_mode,
-
             # Playback commands
             "Playback.Play": self._handle_playback_play,
             "Playback.Stop": self._handle_playback_stop,
             "Playback.Rewind": self._handle_playback_rewind,
-
             # Application commands
             "Application.Status": self._handle_application_status,
             "Application.GetCommands": self._handle_get_commands,
@@ -233,10 +227,14 @@ class MockDoricoServer:
         self._state["session_token"] = token
 
         # Send session token
-        await websocket.send(json.dumps({
-            "message": "sessiontoken",
-            "sessionToken": token,
-        }))
+        await websocket.send(
+            json.dumps(
+                {
+                    "message": "sessiontoken",
+                    "sessionToken": token,
+                }
+            )
+        )
 
     async def _handle_accept_token(
         self,
@@ -262,12 +260,14 @@ class MockDoricoServer:
         command_name, params = self._parse_command(command_str)
 
         # Record in history
-        self._command_history.append({
-            "command": command_name,
-            "params": params,
-            "raw": command_str,
-            "request_id": request_id,
-        })
+        self._command_history.append(
+            {
+                "command": command_name,
+                "params": params,
+                "raw": command_str,
+                "request_id": request_id,
+            }
+        )
 
         logger.debug(f"Command: {command_name}, Params: {params}")
 

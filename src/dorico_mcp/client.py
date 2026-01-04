@@ -148,12 +148,12 @@ class DoricoClient:
                 websockets.connect(uri),
                 timeout=self.CONNECT_TIMEOUT,
             )
-        except asyncio.TimeoutError:
+        except TimeoutError as e:
             self._state = ConnectionState.ERROR
-            raise DoricoConnectionError(f"Connection to {uri} timed out")
+            raise DoricoConnectionError(f"Connection to {uri} timed out") from e
         except Exception as e:
             self._state = ConnectionState.ERROR
-            raise DoricoConnectionError(f"Failed to connect to Dorico: {e}")
+            raise DoricoConnectionError(f"Failed to connect to Dorico: {e}") from e
 
         # Start receive loop
         self._receive_task = asyncio.create_task(self._receive_loop())
@@ -163,7 +163,7 @@ class DoricoClient:
             await self._handshake()
         except Exception as e:
             await self.disconnect()
-            raise DoricoConnectionError(f"Handshake failed: {e}")
+            raise DoricoConnectionError(f"Handshake failed: {e}") from e
 
         # Start keepalive
         self._keepalive_task = asyncio.create_task(self._keepalive_loop())
@@ -224,18 +224,17 @@ class DoricoClient:
                 raise DoricoConnectionError("Not connected to Dorico")
 
         # Build command string
-        if isinstance(command, DoricoCommand):
-            command_str = command.to_command_string()
-        else:
-            command_str = command
+        command_str = command.to_command_string() if isinstance(command, DoricoCommand) else command
 
         # Create request
         request_id = str(uuid.uuid4())[:8]
-        message = json.dumps({
-            "message": "command",
-            "command": command_str,
-            "requestId": request_id,
-        })
+        message = json.dumps(
+            {
+                "message": "command",
+                "command": command_str,
+                "requestId": request_id,
+            }
+        )
 
         # Send and wait for response
         future: asyncio.Future[DoricoResponse] = asyncio.Future()
@@ -254,13 +253,13 @@ class DoricoClient:
             )
             return response
 
-        except asyncio.TimeoutError:
+        except TimeoutError as e:
             self._pending_requests.pop(request_id, None)
-            raise DoricoCommandError(f"Command '{command_str}' timed out")
+            raise DoricoCommandError(f"Command '{command_str}' timed out") from e
 
         except Exception as e:
             self._pending_requests.pop(request_id, None)
-            raise DoricoCommandError(f"Command failed: {e}")
+            raise DoricoCommandError(f"Command failed: {e}") from e
 
     async def send_commands(
         self,
@@ -397,10 +396,14 @@ class DoricoClient:
 
             # Accept the token
             if self._websocket:
-                await self._websocket.send(json.dumps({
-                    "message": "acceptsessiontoken",
-                    "sessionToken": self._session_token,
-                }))
+                await self._websocket.send(
+                    json.dumps(
+                        {
+                            "message": "acceptsessiontoken",
+                            "sessionToken": self._session_token,
+                        }
+                    )
+                )
 
         elif msg_type == "response":
             # Match to pending request

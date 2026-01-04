@@ -2,7 +2,6 @@
 Tests for harmony analysis tools.
 """
 
-import pytest
 
 from dorico_mcp.tools import (
     COMMON_PROGRESSIONS,
@@ -36,14 +35,14 @@ class TestChordSuggestions:
         chord_names = [s["chord"] for s in suggestions]
         assert "I" in chord_names
 
-    def test_suggest_next_chord_after_I(self):
+    def test_suggest_next_chord_after_i(self):
         suggestions = suggest_next_chord(["I"], "C major")
         assert len(suggestions) > 0
         # Common progressions from I
         chord_names = [s["chord"] for s in suggestions]
         assert any(c in chord_names for c in ["IV", "V", "vi"])
 
-    def test_suggest_next_chord_after_V(self):
+    def test_suggest_next_chord_after_v(self):
         suggestions = suggest_next_chord(["V"], "C major")
         assert len(suggestions) > 0
         # V commonly goes to I
