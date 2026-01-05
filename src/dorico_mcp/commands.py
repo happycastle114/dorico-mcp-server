@@ -370,3 +370,25 @@ def get_options(option_type: str, target_id: int | None = None) -> str:
     elif option_type == "notation" and target_id is not None:
         return f"Application.GetNotationOptions?FlowID={target_id}"
     return "Application.GetEngravingOptions"
+
+
+def set_options(option_type: str, options: dict, target_id: int | None = None) -> str:
+    """Set engraving/layout/notation options.
+
+    Args:
+        option_type: Type of options (engraving, layout, notation)
+        options: Dictionary of option key-value pairs to set
+        target_id: Layout or Flow ID (required for layout/notation options)
+
+    Returns:
+        Command string for Dorico API
+    """
+    params = "&".join(f"{k}={v}" for k, v in options.items())
+
+    if option_type == "engraving":
+        return f"Application.SetEngravingOptions?{params}"
+    elif option_type == "layout" and target_id is not None:
+        return f"Application.SetLayoutOptions?LayoutID={target_id}&{params}"
+    elif option_type == "notation" and target_id is not None:
+        return f"Application.SetNotationOptions?FlowID={target_id}&{params}"
+    return f"Application.SetEngravingOptions?{params}"

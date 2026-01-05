@@ -897,6 +897,64 @@ WORKFLOW: Always connect first with connect_to_dorico() before other operations.
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+    @mcp.tool()
+    async def set_engraving_options(options: dict[str, Any]) -> dict[str, Any]:
+        """
+        Set engraving options for the document.
+
+        Engraving options control the visual appearance of notation elements.
+
+        Args:
+            options: Dictionary of option names and values to set
+
+        Returns:
+            Success status
+        """
+        try:
+            async with get_client() as client:
+                response = await client.send_command(cmd.set_options("engraving", options))
+                return {"success": response.success, "message": "Engraving options updated"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    @mcp.tool()
+    async def set_layout_options(layout_id: int, options: dict[str, Any]) -> dict[str, Any]:
+        """
+        Set layout options for a specific layout.
+
+        Args:
+            layout_id: ID of the layout (get from get_layouts())
+            options: Dictionary of option names and values to set
+
+        Returns:
+            Success status
+        """
+        try:
+            async with get_client() as client:
+                response = await client.send_command(cmd.set_options("layout", options, layout_id))
+                return {"success": response.success, "message": f"Layout {layout_id} options updated"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    @mcp.tool()
+    async def set_notation_options(flow_id: int, options: dict[str, Any]) -> dict[str, Any]:
+        """
+        Set notation options for a specific flow.
+
+        Args:
+            flow_id: ID of the flow (get from get_flows())
+            options: Dictionary of option names and values to set
+
+        Returns:
+            Success status
+        """
+        try:
+            async with get_client() as client:
+                response = await client.send_command(cmd.set_options("notation", options, flow_id))
+                return {"success": response.success, "message": f"Flow {flow_id} notation options updated"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
     # -------------------------------------------------------------------------
     # Harmony Tools (화성학 도구)
     # -------------------------------------------------------------------------
