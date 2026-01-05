@@ -92,6 +92,11 @@ class DoricoClient:
             "status": [],
             "selectionchanged": [],
             "documentchanged": [],
+            "playbackstarted": [],
+            "playbackstopped": [],
+            "undoredo": [],
+            "flowchanged": [],
+            "layoutchanged": [],
         }
 
     @property
