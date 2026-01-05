@@ -7,6 +7,7 @@ transpositions, and characteristics.
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 
 class InstrumentFamily(str, Enum):
@@ -382,7 +383,7 @@ def get_instrument(name: str) -> InstrumentInfo | None:
     return INSTRUMENTS.get(key)
 
 
-def check_range(instrument_name: str, pitch: str) -> dict[str, any]:
+def check_range(instrument_name: str, pitch: str) -> dict[str, Any]:
     """
     Check if a pitch is within an instrument's range.
 
@@ -458,7 +459,7 @@ def _pitch_to_midi(pitch: str) -> int:
     return (octave + 1) * 12 + base + accidental
 
 
-def get_transposition_interval(instrument_name: str) -> dict[str, any]:
+def get_transposition_interval(instrument_name: str) -> dict[str, Any]:
     """Get the transposition interval for an instrument."""
     instrument = get_instrument(instrument_name)
     if not instrument:

@@ -38,6 +38,11 @@ This MCP (Model Context Protocol) server enables natural language control of Ste
 - Complete instrument database with ranges
 - Check playability (instrument range validation)
 - Transposition for transposing instruments
+- Get detailed instrument information
+
+### 🔍 Query Tools
+- Get flows, layouts, and selection properties
+- Access engraving, layout, and notation options
 
 ### 📋 Guided Workflows (Prompts)
 - Harmonize a melody
@@ -143,6 +148,44 @@ Add to your ChatGPT Desktop configuration:
 "What's the comfortable range for French horn?"
 "What transposition does the Bb clarinet use?"
 ```
+
+### Counterpoint
+
+```
+"Check if this counterpoint follows first species rules: 
+  Cantus: C4, D4, E4, F4, E4, D4, C4
+  Counterpoint: G4, A4, B4, C5, B4, A4, G4"
+"Generate a counterpoint melody above this cantus firmus: D4, E4, F4, G4, F4, E4, D4"
+```
+
+### Voice Leading Validation
+
+```
+"Check this four-part harmony for parallel fifths:
+  Soprano: C5, D5, E5
+  Alto: E4, F4, G4
+  Tenor: G3, A3, B3
+  Bass: C3, D3, E3"
+```
+
+## Available Tools (51)
+
+| Category | Tools |
+|----------|-------|
+| **Connection** | `connect_to_dorico`, `get_dorico_status` |
+| **Score** | `create_score`, `open_score`, `save_score`, `export_score` |
+| **Notes** | `add_notes`, `add_rest`, `add_slur`, `delete_notes` |
+| **Notation** | `set_key_signature`, `set_time_signature`, `add_dynamics`, `add_tempo`, `add_articulation`, `add_text` |
+| **Navigation** | `go_to_bar`, `add_instrument`, `remove_instrument` |
+| **Transpose** | `transpose`, `transpose_octave`, `transpose_for_instrument` |
+| **Playback** | `playback_control` |
+| **Harmony** | `analyze_chord`, `suggest_next_chord`, `check_voice_leading`, `generate_chord_progression`, `realize_figured_bass`, `suggest_cadence` |
+| **Orchestration** | `check_instrument_range`, `get_instrument_info`, `suggest_doubling`, `suggest_instrumentation`, `balance_dynamics` |
+| **Counterpoint** | `check_species_rules`, `generate_counterpoint` |
+| **Analysis** | `analyze_intervals`, `check_playability`, `validate_score`, `detect_parallel_motion`, `find_dissonances` |
+| **Validation** | `validate_voice_leading`, `check_enharmonic` |
+| **Proofreading** | `check_beaming`, `check_spacing` |
+| **Query** | `get_flows`, `get_layouts`, `get_selection_properties`, `get_engraving_options`, `get_layout_options`, `get_notation_options` |
 
 ## Development
 

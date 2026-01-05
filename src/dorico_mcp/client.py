@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import websockets
-from websockets.client import WebSocketClientProtocol
+from websockets import ClientConnection
 
 from dorico_mcp.models import ConnectionState, DoricoCommand, DoricoResponse
 
@@ -78,7 +78,7 @@ class DoricoClient:
         self.client_name = client_name
         self.auto_reconnect = auto_reconnect
 
-        self._websocket: WebSocketClientProtocol | None = None
+        self._websocket: ClientConnection | None = None
         self._state = ConnectionState.DISCONNECTED
         self._session_token: str | None = None
         self._handshake_id: str | None = None
@@ -88,6 +88,11 @@ class DoricoClient:
         self._pending_requests: dict[str, asyncio.Future[DoricoResponse]] = {}
         self._receive_task: asyncio.Task[None] | None = None
         self._keepalive_task: asyncio.Task[None] | None = None
+        self._event_handlers: dict[str, list[Any]] = {
+            "status": [],
+            "selectionchanged": [],
+            "documentchanged": [],
+        }
 
     @property
     def state(self) -> ConnectionState:
@@ -142,8 +147,8 @@ class DoricoClient:
         logger.info(f"Found Dorico on port {port}")
 
         # Connect WebSocket
+        uri = f"ws://{self.host}:{self.port}"
         try:
-            uri = f"ws://{self.host}:{self.port}"
             self._websocket = await asyncio.wait_for(
                 websockets.connect(uri),
                 timeout=self.CONNECT_TIMEOUT,
@@ -292,15 +297,20 @@ class DoricoClient:
         return response.data or {}
 
     async def get_commands(self) -> list[str]:
-        """Get list of available Dorico commands."""
         response = await self.send_command("Application.GetCommands")
         if response.data and "commands" in response.data:
-            return response.data["commands"]
+            commands = response.data["commands"]
+            return list(commands) if isinstance(commands, list) else []
         return []
 
     async def get_selection(self) -> dict[str, Any]:
         """Get current selection in Dorico."""
         response = await self.send_command("Edit.GetSelection")
+        return response.data or {}
+
+    async def get_score_info(self) -> dict[str, Any]:
+        """Get current score information."""
+        response = await self.send_command("Document.GetInfo")
         return response.data or {}
 
     # =========================================================================
@@ -419,8 +429,34 @@ class DoricoClient:
                 future.set_result(response)
 
         elif msg_type == "status":
-            # Status update - could be used for events
             logger.debug(f"Status update: {data}")
+            await self._dispatch_event("status", data)
+
+        elif msg_type == "selectionchanged":
+            logger.debug(f"Selection changed: {data}")
+            await self._dispatch_event("selectionchanged", data)
+
+        elif msg_type == "documentchanged":
+            logger.debug(f"Document changed: {data}")
+            await self._dispatch_event("documentchanged", data)
+
+    def on_event(self, event_type: str, handler: Any) -> None:
+        if event_type in self._event_handlers:
+            self._event_handlers[event_type].append(handler)
+
+    def off_event(self, event_type: str, handler: Any) -> None:
+        if event_type in self._event_handlers and handler in self._event_handlers[event_type]:
+            self._event_handlers[event_type].remove(handler)
+
+    async def _dispatch_event(self, event_type: str, data: dict[str, Any]) -> None:
+        for handler in self._event_handlers.get(event_type, []):
+            try:
+                if asyncio.iscoroutinefunction(handler):
+                    await handler(data)
+                else:
+                    handler(data)
+            except Exception as e:
+                logger.error(f"Event handler error for {event_type}: {e}")
 
     async def _keepalive_loop(self) -> None:
         """Send periodic keepalive messages."""
@@ -433,11 +469,11 @@ class DoricoClient:
                 break
 
     def _load_session_token(self) -> str | None:
-        """Load saved session token from file."""
         try:
             if self.token_file_path.exists():
                 data = json.loads(self.token_file_path.read_text())
-                return data.get("token")
+                token = data.get("token")
+                return str(token) if token is not None else None
         except Exception:
             pass
         return None

@@ -15,10 +15,6 @@ from dorico_mcp.models import (
     NoteDuration,
 )
 
-# =============================================================================
-# File Commands
-# =============================================================================
-
 
 def file_new() -> str:
     """Create a new score."""
@@ -27,7 +23,7 @@ def file_new() -> str:
 
 def file_open(path: str) -> str:
     """Open an existing score."""
-    return f"File.Open?Path={path}"
+    return f"File.Open?File={path}"
 
 
 def file_save() -> str:
@@ -53,11 +49,6 @@ def file_export_pdf(path: str) -> str:
 def file_export_musicxml(path: str) -> str:
     """Export score as MusicXML."""
     return f"File.ExportMusicXML?Path={path}"
-
-
-# =============================================================================
-# Edit Commands
-# =============================================================================
 
 
 def edit_undo() -> str:
@@ -95,11 +86,6 @@ def edit_select_all() -> str:
     return "Edit.SelectAll"
 
 
-# =============================================================================
-# Note Input Commands
-# =============================================================================
-
-
 def note_input_start() -> str:
     """Start note input mode."""
     return "NoteInput.Enter"
@@ -124,30 +110,31 @@ def note_input_set_duration(duration: NoteDuration) -> str:
     return f"NoteInput.SetDuration?Duration={duration_map[duration]}"
 
 
-def note_input_pitch(pitch: str) -> str:
-    """
-    Input a note at current position.
+def note_input_set_accidental(accidental_type: str) -> str:
+    """Set accidental for the next note (call before note_input_pitch)."""
+    return f"NoteInput.SetAccidental?Type={accidental_type}"
 
-    Args:
-        pitch: Note name with octave (e.g., "C4", "F#5", "Bb3")
-    """
-    # Parse pitch to Dorico format
-    # Dorico uses: C, D, E, F, G, A, B with # for sharp, b for flat
-    # Octave is specified separately
+
+def note_input_pitch(pitch: str) -> str:
+    """Input a note at current position (pitch format: C4, F#5, Bb3)."""
+    note = pitch[0].upper()
+    octave = pitch[-1]
+    return f"NoteInput.Pitch?Pitch={note}&OctaveValue={octave}"
+
+
+def get_note_commands(pitch: str) -> list[str]:
+    """Get commands for note input with accidental handling."""
+    commands = []
     note = pitch[0].upper()
     octave = pitch[-1]
 
-    accidental = ""
     if "#" in pitch:
-        accidental = "Sharp"
+        commands.append(note_input_set_accidental("Sharp"))
     elif "b" in pitch.lower() and pitch.lower() != "b":
-        accidental = "Flat"
+        commands.append(note_input_set_accidental("Flat"))
 
-    cmd = f"NoteInput.Pitch?Note={note}&Octave={octave}"
-    if accidental:
-        cmd += f"&Accidental={accidental}"
-
-    return cmd
+    commands.append(f"NoteInput.Pitch?Pitch={note}&OctaveValue={octave}")
+    return commands
 
 
 def note_input_rest() -> str:
@@ -175,9 +162,9 @@ def note_input_chord_mode_off() -> str:
     return "NoteInput.ChordModeOff"
 
 
-# =============================================================================
-# Navigation Commands
-# =============================================================================
+def note_input_advance() -> str:
+    """Advance caret position (creates rest if in note input)."""
+    return "NoteInput.MoveAdvance"
 
 
 def navigate_next_bar() -> str:
@@ -205,32 +192,16 @@ def navigate_end() -> str:
     return "Navigate.End"
 
 
-# =============================================================================
-# Notation Commands
-# =============================================================================
-
-
 def add_key_signature(root: str, mode: KeyMode) -> str:
-    """
-    Add key signature.
-
-    Args:
-        root: Root note (C, D, E, F, G, A, B with optional # or b)
-        mode: Major or Minor
-    """
-    # Convert to Dorico format
+    """Add key signature (root: C, D, E, F, G, A, B with optional # or b)."""
     tonic = root[0].upper()
-    accidental = ""
-    if "#" in root:
-        accidental = "Sharp"
-    elif "b" in root.lower():
-        accidental = "Flat"
-
     mode_str = "Major" if mode == KeyMode.MAJOR else "Minor"
-
     cmd = f"Edit.AddKeySignature?Tonic={tonic}&Mode={mode_str}"
-    if accidental:
-        cmd += f"&Accidental={accidental}"
+
+    if "#" in root:
+        cmd += "&Accidental=Sharp"
+    elif "b" in root.lower():
+        cmd += "&Accidental=Flat"
 
     return cmd
 
@@ -290,11 +261,6 @@ def add_text(text: str) -> str:
     return f"Edit.AddText?Text={text}"
 
 
-# =============================================================================
-# Transpose Commands
-# =============================================================================
-
-
 def transpose_up_octave() -> str:
     """Transpose selection up one octave."""
     return "Edit.TransposeUpOctave"
@@ -320,11 +286,6 @@ def transpose_chromatic(semitones: int) -> str:
     return f"Edit.TransposeChromatic?Semitones={semitones}"
 
 
-# =============================================================================
-# Instrument Commands
-# =============================================================================
-
-
 def add_instrument(instrument_name: str) -> str:
     """Add instrument to score."""
     return f"Edit.AddInstrument?Name={instrument_name}"
@@ -335,34 +296,29 @@ def remove_instrument(instrument_name: str) -> str:
     return f"Edit.RemoveInstrument?Name={instrument_name}"
 
 
-# =============================================================================
-# View Commands
-# =============================================================================
+def view_switch_mode(mode: str) -> str:
+    """Switch window mode (kWriteMode, kEngraveMode, kPlayMode, kPrintMode)."""
+    return f"Window.SwitchMode?WindowMode={mode}"
 
 
 def view_write_mode() -> str:
     """Switch to Write mode."""
-    return "View.WriteMode"
+    return "Window.SwitchMode?WindowMode=kWriteMode"
 
 
 def view_engrave_mode() -> str:
     """Switch to Engrave mode."""
-    return "View.EngraveMode"
+    return "Window.SwitchMode?WindowMode=kEngraveMode"
 
 
 def view_play_mode() -> str:
     """Switch to Play mode."""
-    return "View.PlayMode"
+    return "Window.SwitchMode?WindowMode=kPlayMode"
 
 
 def view_print_mode() -> str:
     """Switch to Print mode."""
-    return "View.PrintMode"
-
-
-# =============================================================================
-# Playback Commands
-# =============================================================================
+    return "Window.SwitchMode?WindowMode=kPrintMode"
 
 
 def playback_play() -> str:
@@ -378,3 +334,39 @@ def playback_stop() -> str:
 def playback_rewind() -> str:
     """Rewind to start."""
     return "Playback.Rewind"
+
+
+def get_status() -> str:
+    """Get Dorico application status."""
+    return "Application.Status"
+
+
+def get_commands() -> str:
+    """Get list of available Dorico commands."""
+    return "Application.GetCommands"
+
+
+def get_flows() -> str:
+    """Get list of flows in current project."""
+    return "Application.GetFlows"
+
+
+def get_layouts() -> str:
+    """Get list of layouts in current project."""
+    return "Application.GetLayouts"
+
+
+def get_selection_properties() -> str:
+    """Get properties of current selection."""
+    return "Edit.GetProperties"
+
+
+def get_options(option_type: str, target_id: int | None = None) -> str:
+    """Get engraving/layout/notation options."""
+    if option_type == "engraving":
+        return "Application.GetEngravingOptions"
+    elif option_type == "layout" and target_id is not None:
+        return f"Application.GetLayoutOptions?LayoutID={target_id}"
+    elif option_type == "notation" and target_id is not None:
+        return f"Application.GetNotationOptions?FlowID={target_id}"
+    return "Application.GetEngravingOptions"

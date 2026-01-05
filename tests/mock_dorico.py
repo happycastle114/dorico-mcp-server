@@ -9,10 +9,11 @@ import asyncio
 import json
 import logging
 import uuid
+from collections.abc import Callable
 from typing import Any
 
 import websockets
-from websockets.server import WebSocketServerProtocol
+from websockets import ServerConnection
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ class MockDoricoServer:
         self.host = host
         self.port = port
         self._server = None
-        self._clients: set[WebSocketServerProtocol] = set()
+        self._clients: set[ServerConnection] = set()
 
         # Mock state
         self._state = {
@@ -52,7 +53,7 @@ class MockDoricoServer:
         # Registered commands and their handlers
         self._handlers = self._register_handlers()
 
-    def _register_handlers(self) -> dict[str, callable]:
+    def _register_handlers(self) -> dict[str, Callable[[dict[str, str]], Any]]:
         """Register command handlers."""
         return {
             # File commands
@@ -87,6 +88,7 @@ class MockDoricoServer:
             "NoteInput.Enter": self._handle_note_input_enter,
             "NoteInput.Exit": self._handle_note_input_exit,
             "NoteInput.SetDuration": self._handle_simple_success,
+            "NoteInput.SetAccidental": self._handle_simple_success,
             "NoteInput.Pitch": self._handle_note_input_pitch,
             "NoteInput.Rest": self._handle_note_input_rest,
             "NoteInput.Tie": self._handle_simple_success,
@@ -168,13 +170,14 @@ class MockDoricoServer:
     # WebSocket Handlers
     # =========================================================================
 
-    async def _handle_client(self, websocket: WebSocketServerProtocol) -> None:
-        """Handle a client connection."""
+    async def _handle_client(self, websocket: ServerConnection) -> None:
         self._clients.add(websocket)
         logger.info(f"Client connected: {websocket.remote_address}")
 
         try:
             async for message in websocket:
+                if isinstance(message, bytes):
+                    message = message.decode("utf-8")
                 await self._process_message(websocket, message)
         except websockets.exceptions.ConnectionClosed:
             logger.info(f"Client disconnected: {websocket.remote_address}")
@@ -183,7 +186,7 @@ class MockDoricoServer:
 
     async def _process_message(
         self,
-        websocket: WebSocketServerProtocol,
+        websocket: ServerConnection,
         message: str,
     ) -> None:
         """Process incoming message."""
@@ -207,7 +210,7 @@ class MockDoricoServer:
 
     async def _handle_connect(
         self,
-        websocket: WebSocketServerProtocol,
+        websocket: ServerConnection,
         data: dict[str, Any],
     ) -> None:
         """Handle connection handshake."""
@@ -238,7 +241,7 @@ class MockDoricoServer:
 
     async def _handle_accept_token(
         self,
-        websocket: WebSocketServerProtocol,
+        websocket: ServerConnection,
         data: dict[str, Any],
     ) -> None:
         """Handle session token acceptance."""
@@ -249,7 +252,7 @@ class MockDoricoServer:
 
     async def _handle_command(
         self,
-        websocket: WebSocketServerProtocol,
+        websocket: ServerConnection,
         data: dict[str, Any],
     ) -> None:
         """Handle command execution."""
@@ -434,10 +437,10 @@ class MockDoricoServer:
 
     async def _handle_note_input_pitch(self, params: dict) -> dict:
         """Handle NoteInput.Pitch command."""
-        note = params.get("Note", "C")
-        octave = params.get("Octave", "4")
-        accidental = params.get("Accidental", "")
-        pitch = f"{note}{accidental}{octave}"
+        # Support both old format (Note/Octave) and new format (Pitch/OctaveValue)
+        note = params.get("Pitch", params.get("Note", "C"))
+        octave = params.get("OctaveValue", params.get("Octave", "4"))
+        pitch = f"{note}{octave}"
         return {"success": True, "data": {"pitch": pitch}}
 
     async def _handle_note_input_rest(self, params: dict) -> dict:

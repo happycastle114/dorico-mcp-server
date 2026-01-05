@@ -6,8 +6,10 @@ It exposes tools, resources, and prompts for controlling Dorico.
 """
 
 import logging
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from functools import lru_cache
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
@@ -15,22 +17,58 @@ from mcp.server.fastmcp import FastMCP
 from dorico_mcp import commands as cmd
 from dorico_mcp.client import DoricoClient, DoricoConnectionError
 from dorico_mcp.models import (
+    Articulation,
     Dynamic,
     KeyMode,
     NoteDuration,
 )
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Global client instance
 _dorico_client: DoricoClient | None = None
+
+_cache: dict[str, tuple[Any, float]] = {}
+CACHE_TTL = 60.0
+
+
+def _get_cached(key: str) -> Any | None:
+    if key in _cache:
+        value, timestamp = _cache[key]
+        if time.time() - timestamp < CACHE_TTL:
+            return value
+        del _cache[key]
+    return None
+
+
+def _set_cached(key: str, value: Any) -> None:
+    _cache[key] = (value, time.time())
+
+
+def _clear_cache() -> None:
+    _cache.clear()
+
+
+@lru_cache(maxsize=128)
+def _get_instrument_info_cached(instrument: str) -> dict[str, Any]:
+    from dorico_mcp.tools.instruments import get_instrument
+
+    info = get_instrument(instrument)
+    if info:
+        return {
+            "found": True,
+            "name": info.name,
+            "family": info.family.value,
+            "range": f"{info.lowest_pitch} - {info.highest_pitch}",
+            "comfortable_range": f"{info.comfortable_low} - {info.comfortable_high}",
+            "transposition": info.transposition,
+            "clef": info.clef,
+        }
+    return {"found": False, "error": f"Instrument '{instrument}' not found in database"}
 
 
 @asynccontextmanager
 async def get_client() -> AsyncIterator[DoricoClient]:
-    """Get or create Dorico client connection."""
     global _dorico_client
 
     if _dorico_client is None:
@@ -46,9 +84,16 @@ def create_server() -> FastMCP:
     """Create and configure the MCP server."""
     mcp = FastMCP(
         name="dorico-mcp-server",
-        version="0.1.0",
-        description="Control Dorico music notation software via natural language. "
-        "Designed for composition majors (작곡 전공자) to streamline their workflow.",
+        instructions="""Control Dorico music notation software via natural language.
+Designed for composition majors (작곡 전공자) to streamline their workflow.
+
+API LIMITATIONS (Dorico Remote Control):
+- Selection-based only: Can only query/modify currently selected items
+- No arbitrary score navigation: Cannot programmatically read specific bars/measures
+- File.New may be disabled in some Dorico versions
+- kOK response does not guarantee operation success
+
+WORKFLOW: Always connect first with connect_to_dorico() before other operations.""",
     )
 
     # =========================================================================
@@ -99,9 +144,26 @@ def create_server() -> FastMCP:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    # -------------------------------------------------------------------------
-    # Score Management Tools
-    # -------------------------------------------------------------------------
+    @mcp.tool()
+    async def open_score(path: str) -> dict[str, Any]:
+        """
+        Open an existing score file.
+
+        Args:
+            path: File path to the Dorico project file (.dorico)
+
+        Returns:
+            Success status
+        """
+        try:
+            async with get_client() as client:
+                response = await client.send_command(cmd.file_open(path))
+                return {
+                    "success": response.success,
+                    "message": f"Opened: {path}" if response.success else "Failed to open",
+                }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     @mcp.tool()
     async def create_score(
@@ -485,6 +547,87 @@ def create_server() -> FastMCP:
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
+    async def add_articulation(articulation: str) -> dict[str, Any]:
+        """
+        Add an articulation to the current selection.
+
+        Args:
+            articulation: Articulation type (staccato, accent, tenuto, marcato,
+                         staccatissimo, fermata)
+
+        Returns:
+            Success status
+        """
+        valid_articulations = ["staccato", "accent", "tenuto", "marcato", "staccatissimo", "fermata"]
+        if articulation.lower() not in valid_articulations:
+            return {"success": False, "error": f"Unknown articulation. Use: {', '.join(valid_articulations)}"}
+
+        try:
+            artic_enum = Articulation(articulation.lower())
+            async with get_client() as client:
+                response = await client.send_command(cmd.add_articulation(artic_enum))
+                return {"success": response.success, "articulation": articulation}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    @mcp.tool()
+    async def add_text(
+        text: str,
+        text_type: str = "expression",
+    ) -> dict[str, Any]:
+        """
+        Add text to the score at the current position.
+
+        Args:
+            text: Text content to add
+            text_type: Type of text (expression, technique, tempo, staff)
+
+        Returns:
+            Success status
+        """
+        try:
+            async with get_client() as client:
+                response = await client.send_command(cmd.add_text(text))
+                return {"success": response.success, "text": text, "type": text_type}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    @mcp.tool()
+    async def delete_notes() -> dict[str, Any]:
+        """
+        Delete the currently selected notes.
+
+        Select the notes to delete first, then call this tool.
+
+        Returns:
+            Success status
+        """
+        try:
+            async with get_client() as client:
+                response = await client.send_command(cmd.edit_delete())
+                return {"success": response.success, "message": "Selection deleted"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    @mcp.tool()
+    async def remove_instrument(instrument_name: str) -> dict[str, Any]:
+        """
+        Remove an instrument from the score.
+
+        Args:
+            instrument_name: Name of the instrument to remove
+
+        Returns:
+            Success status
+        """
+        try:
+            async with get_client() as client:
+                response = await client.send_command(cmd.remove_instrument(instrument_name))
+                return {"success": response.success, "removed": instrument_name}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    @mcp.tool()
     async def add_slur() -> dict[str, Any]:
         """
         Add a slur to the current selection.
@@ -649,6 +792,650 @@ def create_server() -> FastMCP:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+    @mcp.tool()
+    async def get_flows() -> dict[str, Any]:
+        """
+        Get list of flows in the current project.
+
+        Flows are separate musical sections within a Dorico project.
+
+        Returns:
+            List of flows with IDs and names
+        """
+        try:
+            async with get_client() as client:
+                response = await client.send_command(cmd.get_flows())
+                return {"success": response.success, "flows": response.data}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    @mcp.tool()
+    async def get_layouts() -> dict[str, Any]:
+        """
+        Get list of layouts in the current project.
+
+        Layouts define how music is presented (full score, parts, etc.).
+
+        Returns:
+            List of layouts with IDs and names
+        """
+        try:
+            async with get_client() as client:
+                response = await client.send_command(cmd.get_layouts())
+                return {"success": response.success, "layouts": response.data}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    @mcp.tool()
+    async def get_selection_properties() -> dict[str, Any]:
+        """
+        Get properties of the current selection.
+
+        Returns detailed information about whatever is currently selected in Dorico.
+        NOTE: This is selection-based only - cannot query arbitrary score positions.
+
+        Returns:
+            Properties of current selection
+        """
+        try:
+            async with get_client() as client:
+                response = await client.send_command(cmd.get_selection_properties())
+                return {"success": response.success, "properties": response.data}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    @mcp.tool()
+    async def get_engraving_options() -> dict[str, Any]:
+        """
+        Get current engraving options.
+
+        Engraving options control the visual appearance of notation.
+
+        Returns:
+            Current engraving options
+        """
+        try:
+            async with get_client() as client:
+                response = await client.send_command(cmd.get_options("engraving"))
+                return {"success": response.success, "options": response.data}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    @mcp.tool()
+    async def get_layout_options(layout_id: int) -> dict[str, Any]:
+        """
+        Get layout options for a specific layout.
+
+        Args:
+            layout_id: ID of the layout (get from get_layouts())
+
+        Returns:
+            Layout options for the specified layout
+        """
+        try:
+            async with get_client() as client:
+                response = await client.send_command(cmd.get_options("layout", layout_id))
+                return {"success": response.success, "options": response.data}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    @mcp.tool()
+    async def get_notation_options(flow_id: int) -> dict[str, Any]:
+        """
+        Get notation options for a specific flow.
+
+        Args:
+            flow_id: ID of the flow (get from get_flows())
+
+        Returns:
+            Notation options for the specified flow
+        """
+        try:
+            async with get_client() as client:
+                response = await client.send_command(cmd.get_options("notation", flow_id))
+                return {"success": response.success, "options": response.data}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    # -------------------------------------------------------------------------
+    # Harmony Tools (화성학 도구)
+    # -------------------------------------------------------------------------
+
+    @mcp.tool()
+    def analyze_chord(pitches: list[str], key: str = "C major") -> dict[str, Any]:
+        """
+        Analyze a chord and get its Roman numeral analysis.
+
+        Args:
+            pitches: List of pitch names (e.g., ["C4", "E4", "G4"])
+            key: Key for Roman numeral analysis (e.g., "C major", "A minor")
+
+        Returns:
+            Chord analysis with root, quality, and Roman numeral
+        """
+        from dorico_mcp.tools import analyze_chord_quality, analyze_roman_numeral
+
+        quality = analyze_chord_quality(pitches)
+        roman = analyze_roman_numeral(pitches, key)
+
+        return {
+            "pitches": pitches,
+            "quality": quality,
+            "roman_numeral": roman,
+        }
+
+    @mcp.tool()
+    def suggest_next_chord(
+        previous_chords: list[str],
+        key: str = "C major",
+        style: str = "classical",
+    ) -> dict[str, Any]:
+        """
+        Suggest possible next chords based on harmonic context.
+
+        Args:
+            previous_chords: List of previous chord Roman numerals (e.g., ["I", "IV"])
+            key: Current key (e.g., "C major")
+            style: Style of suggestions (classical, pop, jazz)
+
+        Returns:
+            List of suggested chords with explanations
+        """
+        from dorico_mcp.tools import suggest_next_chord as suggest
+
+        suggestions = suggest(previous_chords, key, style)
+        return {
+            "previous": previous_chords,
+            "key": key,
+            "suggestions": suggestions,
+        }
+
+    @mcp.tool()
+    def check_voice_leading(voice1: list[str], voice2: list[str]) -> dict[str, Any]:
+        """
+        Check for voice leading issues between two voice parts.
+
+        Detects parallel fifths, parallel octaves, voice crossing, etc.
+
+        Args:
+            voice1: List of pitches for first voice (e.g., ["C4", "D4", "E4"])
+            voice2: List of pitches for second voice (e.g., ["G3", "A3", "B3"])
+
+        Returns:
+            List of voice leading issues found
+        """
+        from dorico_mcp.tools import check_voice_leading as check_vl
+
+        issues = check_vl(voice1, voice2)
+        return {
+            "voice1": voice1,
+            "voice2": voice2,
+            "issues": issues,
+            "has_errors": any(i.get("severity") == "error" for i in issues),
+        }
+
+    @mcp.tool()
+    def generate_chord_progression(
+        key: str = "C major",
+        length: int = 4,
+        style: str = "classical",
+        ending: str = "authentic",
+    ) -> dict[str, Any]:
+        """
+        Generate a chord progression.
+
+        Args:
+            key: Key for the progression (e.g., "C major", "A minor")
+            length: Number of chords (default 4)
+            style: Style (classical, pop, jazz)
+            ending: Cadence type (authentic, half, plagal, deceptive)
+
+        Returns:
+            Generated chord progression with Roman numerals
+        """
+        from dorico_mcp.tools import generate_progression
+
+        progression = generate_progression(key, length, style, ending)
+        return {
+            "key": key,
+            "style": style,
+            "ending": ending,
+            "progression": progression,
+        }
+
+    # -------------------------------------------------------------------------
+    # Orchestration Tools (오케스트레이션 도구)
+    # -------------------------------------------------------------------------
+
+    @mcp.tool()
+    def check_instrument_range(instrument: str, pitch: str) -> dict[str, Any]:
+        """
+        Check if a pitch is playable on an instrument.
+
+        Args:
+            instrument: Instrument name (e.g., "violin", "flute", "clarinet")
+            pitch: Pitch to check (e.g., "C4", "G3")
+
+        Returns:
+            Playability status and range information
+        """
+        from dorico_mcp.tools.instruments import check_range, get_instrument
+
+        result = check_range(instrument, pitch)
+        inst_info = get_instrument(instrument)
+
+        range_str = None
+        if inst_info:
+            range_str = f"{inst_info.lowest_pitch} - {inst_info.highest_pitch}"
+
+        return {
+            "instrument": instrument,
+            "pitch": pitch,
+            "playable": result.get("in_range", False),
+            "comfortable": result.get("in_comfortable_range", False),
+            "range": range_str,
+            "message": result.get("issue", result.get("warning", "")),
+        }
+
+    @mcp.tool()
+    def get_instrument_info(instrument: str) -> dict[str, Any]:
+        """
+        Get detailed information about an instrument.
+
+        Args:
+            instrument: Instrument name (e.g., "violin", "horn", "clarinet")
+
+        Returns:
+            Instrument details including range, transposition, family
+        """
+        return _get_instrument_info_cached(instrument.lower())
+
+    # -------------------------------------------------------------------------
+    # Counterpoint Tools (대위법 도구)
+    # -------------------------------------------------------------------------
+
+    @mcp.tool()
+    def check_species_rules(
+        cantus_firmus: list[str],
+        counterpoint: list[str],
+        species: int = 1,
+    ) -> dict[str, Any]:
+        """
+        Check species counterpoint rules.
+
+        Analyzes a counterpoint line against a cantus firmus for rule violations.
+
+        Args:
+            cantus_firmus: List of pitches for the cantus firmus (e.g., ["C4", "D4", "E4"])
+            counterpoint: List of pitches for the counterpoint line
+            species: Species number (1-5):
+                     1 = Note against note
+                     2 = Two notes against one
+                     3 = Four notes against one
+                     4 = Syncopation/suspensions
+                     5 = Florid (free)
+
+        Returns:
+            Analysis with intervals and rule violations
+
+        Examples:
+            - First species: check_species_rules(["C4", "D4", "E4"], ["G4", "A4", "C5"], species=1)
+        """
+        from dorico_mcp.tools import check_species_rules as check_rules
+
+        return check_rules(cantus_firmus, counterpoint, species)
+
+    @mcp.tool()
+    def generate_counterpoint(
+        cantus_firmus: list[str],
+        species: int = 1,
+        above: bool = True,
+    ) -> dict[str, Any]:
+        """
+        Generate a counterpoint line for a cantus firmus.
+
+        Creates a counterpoint melody following species rules.
+
+        Args:
+            cantus_firmus: List of pitches (e.g., ["C4", "D4", "E4", "F4", "E4", "D4", "C4"])
+            species: Species number (1-5)
+            above: If True, generate counterpoint above CF; if False, below
+
+        Returns:
+            Generated counterpoint with validation results
+
+        Examples:
+            - Above CF: generate_counterpoint(["C4", "D4", "E4", "D4", "C4"], species=1, above=True)
+            - Below CF: generate_counterpoint(["C4", "D4", "E4", "D4", "C4"], species=1, above=False)
+        """
+        from dorico_mcp.tools import generate_counterpoint as gen_cp
+
+        return gen_cp(cantus_firmus, species, above)
+
+    # -------------------------------------------------------------------------
+    # Score Validation Tools (악보 검증 도구)
+    # -------------------------------------------------------------------------
+
+    @mcp.tool()
+    def validate_voice_leading(
+        voices: dict[str, list[str]],
+        key: str = "C major",
+    ) -> dict[str, Any]:
+        """
+        Validate voice leading in a multi-voice passage.
+
+        Checks for parallel fifths/octaves, voice crossing, and range issues.
+
+        Args:
+            voices: Dictionary mapping voice names to pitch lists
+                    Example: {"soprano": ["C5", "D5"], "alto": ["E4", "F4"],
+                              "tenor": ["G3", "A3"], "bass": ["C3", "D3"]}
+            key: Key for analysis (e.g., "C major", "A minor")
+
+        Returns:
+            Validation results with errors and warnings
+
+        Examples:
+            - Four-part: validate_voice_leading({
+                  "soprano": ["C5", "D5", "E5"],
+                  "alto": ["E4", "F4", "G4"],
+                  "tenor": ["G3", "A3", "B3"],
+                  "bass": ["C3", "D3", "E3"]
+              })
+        """
+        from dorico_mcp.tools import validate_score_section
+
+        return validate_score_section(voices, key)
+
+    @mcp.tool()
+    def check_enharmonic(
+        pitches: list[str],
+        key: str = "C major",
+    ) -> dict[str, Any]:
+        """
+        Check for potentially incorrect enharmonic spellings.
+
+        Suggests alternative spellings based on key context.
+
+        Args:
+            pitches: List of pitches to check (e.g., ["C#4", "Db4", "F#4"])
+            key: Key context (e.g., "Db major" - suggests Db instead of C#)
+
+        Returns:
+            List of spelling suggestions
+
+        Examples:
+            - check_enharmonic(["C#4", "F#4"], key="Db major")
+              -> Suggests using Db and Gb instead
+        """
+        from dorico_mcp.tools import check_enharmonic_spelling
+
+        suggestions = check_enharmonic_spelling(pitches, key)
+        return {
+            "pitches": pitches,
+            "key": key,
+            "suggestions": suggestions,
+            "has_issues": len([s for s in suggestions if "error" not in s]) > 0,
+        }
+
+    @mcp.tool()
+    def analyze_intervals(pitches: list[str]) -> dict[str, Any]:
+        """
+        Analyze intervals between consecutive pitches.
+
+        Args:
+            pitches: List of pitches (e.g., ["C4", "E4", "G4", "C5"])
+
+        Returns:
+            List of intervals with names, semitones, and consonance info
+        """
+        from dorico_mcp.tools import analyze_intervals as analyze_int
+
+        intervals = analyze_int(pitches)
+        return {
+            "pitches": pitches,
+            "intervals": intervals,
+            "count": len(intervals),
+        }
+
+    @mcp.tool()
+    def check_playability(instrument: str, pitches: list[str]) -> dict[str, Any]:
+        """
+        Check if a passage is playable on an instrument.
+
+        Args:
+            instrument: Instrument name (e.g., "violin", "flute")
+            pitches: List of pitches to check
+
+        Returns:
+            Playability analysis with range and technique issues
+        """
+        from dorico_mcp.tools import check_playability as check_play
+
+        return check_play(instrument, pitches)
+
+    @mcp.tool()
+    def validate_score(
+        voices: dict[str, list[str]],
+        key: str = "C major",
+    ) -> dict[str, Any]:
+        """
+        Comprehensive score validation.
+
+        Checks voice leading, ranges, parallel motion, and more.
+
+        Args:
+            voices: Dictionary mapping voice names to pitch lists
+            key: Key for analysis
+
+        Returns:
+            Complete validation report with score and issues
+        """
+        from dorico_mcp.tools import validate_score as validate_sc
+
+        return validate_sc(voices, key)
+
+    @mcp.tool()
+    def detect_parallel_motion(voice1: list[str], voice2: list[str]) -> dict[str, Any]:
+        """
+        Detect parallel fifths and octaves between two voices.
+
+        Args:
+            voice1: List of pitches for first voice
+            voice2: List of pitches for second voice
+
+        Returns:
+            Detection results with parallel motion instances
+        """
+        from dorico_mcp.tools import detect_parallel_motion as detect_pm
+
+        return detect_pm(voice1, voice2)
+
+    @mcp.tool()
+    def transpose_for_instrument(
+        pitch: str,
+        instrument: str,
+        to_concert: bool = True,
+    ) -> dict[str, Any]:
+        """
+        Transpose a pitch for a transposing instrument.
+
+        Args:
+            pitch: Pitch to transpose (e.g., "C4")
+            instrument: Instrument name (e.g., "clarinet", "horn", "trumpet")
+            to_concert: If True, written to concert pitch; if False, concert to written
+
+        Returns:
+            Transposed pitch with interval info
+        """
+        from dorico_mcp.tools import transpose_for_instrument as transpose_inst
+
+        return transpose_inst(pitch, instrument, to_concert)
+
+    @mcp.tool()
+    def realize_figured_bass(
+        bass_pitch: str,
+        figures: str = "",
+        key: str = "C major",
+    ) -> dict[str, Any]:
+        """
+        Realize figured bass notation into chord pitches.
+
+        Args:
+            bass_pitch: Bass note (e.g., "C3", "G2")
+            figures: Figured bass notation (e.g., "6", "64", "7", "65", "43", "42")
+            key: Key context for accidentals
+
+        Returns:
+            Realized chord with all pitches
+        """
+        from dorico_mcp.tools import realize_figured_bass as realize_fb
+
+        return realize_fb(bass_pitch, figures, key)
+
+    @mcp.tool()
+    def suggest_cadence(
+        current_chord: str,
+        key: str = "C major",
+        phrase_position: str = "end",
+    ) -> dict[str, Any]:
+        """
+        Suggest appropriate cadence types based on context.
+
+        Args:
+            current_chord: Current chord (e.g., "V", "IV", "I")
+            key: Key context (e.g., "C major", "A minor")
+            phrase_position: Position in phrase ("end", "middle", "beginning")
+
+        Returns:
+            Cadence suggestions with explanations
+        """
+        from dorico_mcp.tools import suggest_cadence as suggest_cad
+
+        return suggest_cad(current_chord, key, phrase_position)
+
+    @mcp.tool()
+    def suggest_doubling(
+        instrument: str,
+        purpose: str = "reinforcement",
+        register: str = "middle",
+    ) -> dict[str, Any]:
+        """
+        Suggest instruments for doubling a given instrument.
+
+        Args:
+            instrument: Primary instrument to double (e.g., "violin", "flute")
+            purpose: Purpose (reinforcement, octave_above, octave_below, color)
+            register: Register of the passage (low, middle, high)
+
+        Returns:
+            Doubling suggestions with rationale
+        """
+        from dorico_mcp.tools import suggest_doubling as suggest_dbl
+
+        return suggest_dbl(instrument, purpose, register)
+
+    @mcp.tool()
+    def find_dissonances(
+        pitches: list[str],
+        context: str = "counterpoint",
+    ) -> dict[str, Any]:
+        """
+        Find dissonant intervals in a collection of pitches.
+
+        Args:
+            pitches: List of pitches sounding together (e.g., ["C4", "E4", "G4", "B4"])
+            context: Context for analysis ("counterpoint", "harmony", "any")
+
+        Returns:
+            List of dissonances found with resolution advice
+        """
+        from dorico_mcp.tools import find_dissonances as find_diss
+
+        return find_diss(pitches, context)
+
+    @mcp.tool()
+    def suggest_instrumentation(
+        style: str = "classical",
+        size: str = "medium",
+        character: str = "balanced",
+    ) -> dict[str, Any]:
+        """
+        Suggest instrumental ensembles based on style and requirements.
+
+        Args:
+            style: Musical style (classical, romantic, modern, baroque, jazz)
+            size: Ensemble size (solo, small, medium, large, orchestra)
+            character: Character of piece (lyrical, dramatic, light, powerful, intimate)
+
+        Returns:
+            Suggested ensembles with rationale
+        """
+        from dorico_mcp.tools import suggest_instrumentation as suggest_inst
+
+        return suggest_inst(style, size, character)
+
+    @mcp.tool()
+    def balance_dynamics(
+        instruments: list[str],
+        target_dynamic: str = "mf",
+        melody_instrument: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Suggest dynamic adjustments for ensemble balance.
+
+        Args:
+            instruments: List of instruments in the ensemble
+            target_dynamic: Target overall dynamic level (pp, p, mp, mf, f, ff)
+            melody_instrument: Instrument carrying the melody (should project)
+
+        Returns:
+            Dynamic suggestions for each instrument
+        """
+        from dorico_mcp.tools import balance_dynamics as balance_dyn
+
+        return balance_dyn(instruments, target_dynamic, melody_instrument)
+
+    @mcp.tool()
+    def check_beaming(
+        time_signature: str,
+        note_values: list[str],
+    ) -> dict[str, Any]:
+        """
+        Check if beaming follows standard notation rules.
+
+        Args:
+            time_signature: Time signature (e.g., "4/4", "6/8")
+            note_values: List of note values in a bar (e.g., ["8th", "8th", "8th", "8th"])
+
+        Returns:
+            Beaming analysis with suggestions
+        """
+        from dorico_mcp.tools import check_beaming as check_beam
+
+        return check_beam(time_signature, note_values)
+
+    @mcp.tool()
+    def check_spacing(
+        note_count: int,
+        bar_width_mm: float = 40.0,
+        shortest_note: str = "quarter",
+    ) -> dict[str, Any]:
+        """
+        Check if note spacing is appropriate for readability.
+
+        Args:
+            note_count: Number of notes in the bar
+            bar_width_mm: Width of the bar in millimeters
+            shortest_note: Shortest note value in the bar
+
+        Returns:
+            Spacing analysis with recommendations
+        """
+        from dorico_mcp.tools import check_spacing as check_space
+
+        return check_space(note_count, bar_width_mm, shortest_note)
+
     # =========================================================================
     # RESOURCES - Read-only data from Dorico
     # =========================================================================
@@ -662,6 +1449,46 @@ def create_server() -> FastMCP:
                 return f"Dorico Status:\n{status}"
         except Exception as e:
             return f"Error: {e}"
+
+    @mcp.resource("dorico://score/info")
+    async def resource_score_info() -> str:
+        """Current score information including title, composer, and instruments."""
+        try:
+            async with get_client() as client:
+                info = await client.get_score_info()
+                return f"Score Info:\n{info}"
+        except Exception as e:
+            return f"Not connected to Dorico or no score open: {e}"
+
+    @mcp.resource("dorico://score/selection")
+    async def resource_score_selection() -> str:
+        """Current selection information including selected notes and bars."""
+        try:
+            async with get_client() as client:
+                selection = await client.get_selection()
+                return f"Selection:\n{selection}"
+        except Exception as e:
+            return f"Not connected to Dorico or no selection: {e}"
+
+    @mcp.resource("dorico://instruments/list")
+    def resource_instrument_list() -> str:
+        """List of available instruments with basic info."""
+        from dorico_mcp.tools.instruments import INSTRUMENTS
+
+        lines = ["# Available Instruments\n"]
+        families: dict[str, list[str]] = {}
+
+        for _name, info in INSTRUMENTS.items():
+            family = info.family.value
+            if family not in families:
+                families[family] = []
+            families[family].append(f"- {info.name} ({info.lowest_pitch} - {info.highest_pitch})")
+
+        for family, instruments in sorted(families.items()):
+            lines.append(f"\n## {family.title()}\n")
+            lines.extend(instruments)
+
+        return "\n".join(lines)
 
     @mcp.resource("dorico://instruments/ranges")
     def resource_instrument_ranges() -> str:
@@ -815,6 +1642,91 @@ Additional rules:
 Combines all previous species with free rhythm.
 
 Use add_notes() to input the counterpoint, checking intervals as you go.
+"""
+
+    @mcp.prompt()
+    def chord_progression_workshop() -> str:
+        """Workflow for creating and refining chord progressions."""
+        return """
+# Chord Progression Workshop
+
+You are helping a composition student create chord progressions.
+
+## Step 1: Set the Context
+- Choose a key (major or minor)
+- Determine the style (classical, pop, jazz)
+- Set the length (4, 8, 16 bars)
+
+## Step 2: Start with Basic Progressions
+For classical:
+- I-IV-V-I (basic)
+- I-vi-IV-V (50s progression)
+- I-IV-vii°-iii-vi-ii-V-I (circle of fifths)
+
+For pop:
+- I-V-vi-IV (four chord)
+- vi-IV-I-V (axis)
+- I-vi-IV-V (50s)
+
+For jazz:
+- ii7-V7-Imaj7 (basic turnaround)
+- Imaj7-vi7-ii7-V7 (rhythm changes)
+
+## Step 3: Add Variations
+- Secondary dominants (V/V, V/ii)
+- Modal interchange (bVI, bVII in major)
+- Passing chords
+- Pedal points
+
+## Step 4: Plan Cadences
+Use suggest_cadence() to find appropriate cadence types:
+- Authentic (V-I) for strong endings
+- Half (I-V) for phrase midpoints
+- Deceptive (V-vi) for unexpected turns
+
+## Step 5: Voice the Chords
+- Use realize_figured_bass() for bass + figures
+- Check voice leading with validate_voice_leading()
+- Add to Dorico with add_notes()
+"""
+
+    @mcp.prompt()
+    def score_review() -> str:
+        """Workflow for comprehensive score review and proofreading."""
+        return """
+# Score Review Checklist
+
+You are reviewing a score for errors and improvements.
+
+## Step 1: Range Check
+For each instrument part:
+- Use check_instrument_range() to verify all notes are playable
+- Use check_playability() for technical passages
+- Flag notes outside comfortable range
+
+## Step 2: Voice Leading Check
+For harmonic passages:
+- Use validate_voice_leading() for parallel 5ths/8ves
+- Check for proper resolution of dissonances
+- Verify leading tone resolutions
+
+## Step 3: Harmony Analysis
+- Use analyze_chord() on vertical sonorities
+- Verify Roman numeral analysis
+- Check for unintended dissonances with find_dissonances()
+
+## Step 4: Orchestration Review
+- Verify doublings make sense (suggest_doubling())
+- Check dynamic balance between sections
+- Ensure transposing instruments are handled correctly
+
+## Step 5: Generate Report
+Summarize findings:
+- Critical errors (unplayable notes, parallel 5ths)
+- Warnings (awkward passages, unusual progressions)
+- Suggestions (better voicings, doublings)
+
+Use the Dorico tools to make corrections as needed.
 """
 
     return mcp

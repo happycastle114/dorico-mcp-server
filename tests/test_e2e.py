@@ -146,33 +146,48 @@ class TestNoteInputE2E:
 
     @pytest.mark.asyncio
     async def test_input_sharp_note(self, client, mock_server):
-        """Test inputting a sharp note."""
+        """Test inputting a sharp note with separate SetAccidental command."""
         await client.send_command(cmd.file_new())
         await client.send_command(cmd.note_input_start())
 
-        response = await client.send_command(cmd.note_input_pitch("F#5"))
+        commands = cmd.get_note_commands("F#5")
+        response = None
+        for command in commands:
+            response = await client.send_command(command)
 
-        assert response.success
-        # Check command was recorded correctly
+        assert response is not None and response.success
+        # Check commands were recorded correctly
         history = mock_server.get_command_history()
+        # Should have SetAccidental command before Pitch
+        accidental_cmds = [c for c in history if c["command"] == "NoteInput.SetAccidental"]
+        assert len(accidental_cmds) > 0
+        assert accidental_cmds[-1]["params"]["Type"] == "Sharp"
+        # Check pitch command uses new format
         pitch_cmd = [c for c in history if c["command"] == "NoteInput.Pitch"][-1]
-        assert pitch_cmd["params"]["Note"] == "F"
-        assert pitch_cmd["params"]["Accidental"] == "Sharp"
-        assert pitch_cmd["params"]["Octave"] == "5"
+        assert pitch_cmd["params"]["Pitch"] == "F"
+        assert pitch_cmd["params"]["OctaveValue"] == "5"
 
     @pytest.mark.asyncio
     async def test_input_flat_note(self, client, mock_server):
-        """Test inputting a flat note."""
+        """Test inputting a flat note with separate SetAccidental command."""
         await client.send_command(cmd.file_new())
         await client.send_command(cmd.note_input_start())
 
-        response = await client.send_command(cmd.note_input_pitch("Bb3"))
+        commands = cmd.get_note_commands("Bb3")
+        response = None
+        for command in commands:
+            response = await client.send_command(command)
 
-        assert response.success
+        assert response is not None and response.success
         history = mock_server.get_command_history()
+        # Should have SetAccidental command before Pitch
+        accidental_cmds = [c for c in history if c["command"] == "NoteInput.SetAccidental"]
+        assert len(accidental_cmds) > 0
+        assert accidental_cmds[-1]["params"]["Type"] == "Flat"
+        # Check pitch command uses new format
         pitch_cmd = [c for c in history if c["command"] == "NoteInput.Pitch"][-1]
-        assert pitch_cmd["params"]["Note"] == "B"
-        assert pitch_cmd["params"]["Accidental"] == "Flat"
+        assert pitch_cmd["params"]["Pitch"] == "B"
+        assert pitch_cmd["params"]["OctaveValue"] == "3"
 
     @pytest.mark.asyncio
     async def test_input_rest(self, client, mock_server):
@@ -545,3 +560,28 @@ class TestCompleteWorkflowE2E:
         history = mock_server.get_command_history()
         pitch_commands = [c for c in history if c["command"] == "NoteInput.Pitch"]
         assert len(pitch_commands) == 12  # 4 chords * 3 notes
+
+
+class TestEventHandling:
+    """Tests for client event handling."""
+
+    @pytest.mark.asyncio
+    async def test_event_handler_registration(self, client, mock_server):
+        """Test registering and unregistering event handlers."""
+        events_received = []
+
+        def handler(data):
+            events_received.append(data)
+
+        client.on_event("status", handler)
+        assert handler in client._event_handlers["status"]
+
+        client.off_event("status", handler)
+        assert handler not in client._event_handlers["status"]
+
+    @pytest.mark.asyncio
+    async def test_event_handlers_initialized(self, client, mock_server):
+        """Test that event handlers dict is properly initialized."""
+        assert "status" in client._event_handlers
+        assert "selectionchanged" in client._event_handlers
+        assert "documentchanged" in client._event_handlers
