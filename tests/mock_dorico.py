@@ -219,25 +219,28 @@ class MockDoricoServer:
 
         logger.info(f"Client '{client_name}' connecting...")
 
-        # Generate or verify session token
         if existing_token and existing_token == self._state.get("session_token"):
-            # Reuse existing token
-            token = existing_token
-        else:
-            # Generate new token
-            token = str(uuid.uuid4())
-
-        self._state["session_token"] = token
-
-        # Send session token
-        await websocket.send(
-            json.dumps(
-                {
-                    "message": "sessiontoken",
-                    "sessionToken": token,
-                }
+            self._state["connected"] = True
+            await websocket.send(
+                json.dumps(
+                    {
+                        "message": "response",
+                        "code": "kConnected",
+                    }
+                )
             )
-        )
+            logger.info("Session reconnected with existing token")
+        else:
+            token = str(uuid.uuid4())
+            self._state["session_token"] = token
+            await websocket.send(
+                json.dumps(
+                    {
+                        "message": "sessiontoken",
+                        "sessionToken": token,
+                    }
+                )
+            )
 
     async def _handle_accept_token(
         self,
@@ -248,6 +251,14 @@ class MockDoricoServer:
         token = data.get("sessionToken")
         if token == self._state.get("session_token"):
             self._state["connected"] = True
+            await websocket.send(
+                json.dumps(
+                    {
+                        "message": "response",
+                        "code": "kConnected",
+                    }
+                )
+            )
             logger.info("Session established")
 
     async def _handle_command(

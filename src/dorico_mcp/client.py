@@ -57,6 +57,9 @@ class DoricoClient:
     COMMAND_TIMEOUT = 30.0
     KEEPALIVE_INTERVAL = 30.0
 
+    # Protocol version
+    HANDSHAKE_VERSION = "1.0"
+
     def __init__(
         self,
         host: str = "localhost",
@@ -81,7 +84,8 @@ class DoricoClient:
         self._websocket: ClientConnection | None = None
         self._state = ConnectionState.DISCONNECTED
         self._session_token: str | None = None
-        self._handshake_id: str | None = None
+        self._handshake_complete: asyncio.Event = asyncio.Event()
+        self._handshake_error: str | None = None
         self._request_queue: asyncio.Queue[tuple[str, asyncio.Future[DoricoResponse]]] = (
             asyncio.Queue()
         )
@@ -346,33 +350,31 @@ class DoricoClient:
         if self._websocket is None:
             raise DoricoConnectionError("WebSocket not initialized")
 
-        # Check for saved token
+        self._handshake_complete.clear()
+        self._handshake_error = None
+
         saved_token = self._load_session_token()
 
-        # Send connect message
-        self._handshake_id = str(uuid.uuid4())
-        connect_msg = {
+        connect_msg: dict[str, str] = {
             "message": "connect",
             "clientName": self.client_name,
-            "handshakeId": self._handshake_id,
+            "handshakeVersion": self.HANDSHAKE_VERSION,
         }
         if saved_token:
             connect_msg["sessionToken"] = saved_token
 
         await self._websocket.send(json.dumps(connect_msg))
-        logger.debug("Sent connect message")
+        logger.debug(f"Sent connect message (with token: {saved_token is not None})")
 
-        # Wait for session token response (will be handled by receive loop)
         self._state = ConnectionState.AWAITING_APPROVAL
 
-        # The response will be handled in _handle_message
-        # Wait up to 60 seconds for user approval
-        for _ in range(60):
-            if self._session_token:
-                break
-            await asyncio.sleep(1.0)
-        else:
-            raise DoricoConnectionError("Timeout waiting for session approval")
+        try:
+            await asyncio.wait_for(self._handshake_complete.wait(), timeout=60.0)
+        except TimeoutError as e:
+            raise DoricoConnectionError("Timeout waiting for session approval") from e
+
+        if self._handshake_error:
+            raise DoricoConnectionError(self._handshake_error)
 
     async def _receive_loop(self) -> None:
         """Background loop to receive messages from Dorico."""
@@ -404,26 +406,33 @@ class DoricoClient:
         logger.debug(f"Received message type: {msg_type}")
 
         if msg_type == "sessiontoken":
-            # Store session token
             self._session_token = data.get("sessionToken")
             if self._session_token:
                 self._save_session_token(self._session_token)
-
-            # Accept the token
-            if self._websocket:
-                await self._websocket.send(
-                    json.dumps(
-                        {
-                            "message": "acceptsessiontoken",
-                            "sessionToken": self._session_token,
-                        }
+                if self._websocket:
+                    await self._websocket.send(
+                        json.dumps(
+                            {
+                                "message": "acceptsessiontoken",
+                                "sessionToken": self._session_token,
+                            }
+                        )
                     )
-                )
+                    logger.debug("Sent acceptsessiontoken")
 
         elif msg_type == "response":
-            # Match to pending request
+            code = data.get("code")
             request_id = data.get("requestId")
-            if request_id and request_id in self._pending_requests:
+
+            if code == "kConnected":
+                logger.info("Handshake complete: kConnected received")
+                self._handshake_complete.set()
+            elif code == "kError":
+                detail = data.get("detail", "Unknown error")
+                logger.error(f"Handshake error: {detail}")
+                self._handshake_error = f"Dorico error: {detail}"
+                self._handshake_complete.set()
+            elif request_id and request_id in self._pending_requests:
                 future = self._pending_requests.pop(request_id)
                 response = DoricoResponse(
                     success=data.get("success", False),
