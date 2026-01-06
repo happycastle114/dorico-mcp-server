@@ -176,7 +176,6 @@ class TestTransposeCommands:
 
 
 class TestQueryCommands:
-
     def test_get_status(self):
         assert get_status() == "Application.Status"
 
@@ -205,7 +204,6 @@ class TestQueryCommands:
 
 
 class TestViewCommands:
-
     def test_view_write_mode(self):
         result = view_write_mode()
         assert "Window.SwitchMode" in result

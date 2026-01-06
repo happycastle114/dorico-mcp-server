@@ -117,7 +117,6 @@ class TestVoiceLeading:
 
 
 class TestSpeciesCounterpoint:
-
     def test_check_species_invalid_species(self):
         result = check_species_rules(["C4"], ["G4"], species=6)
         assert "error" in result
@@ -151,7 +150,6 @@ class TestSpeciesCounterpoint:
 
 
 class TestScoreValidation:
-
     def test_validate_score_section_empty(self):
         result = validate_score_section({})
         assert "voices_checked" in result
@@ -174,7 +172,6 @@ class TestScoreValidation:
 
 
 class TestEnharmonicSpelling:
-
     def test_check_enharmonic_c_major(self):
         result = check_enharmonic_spelling(["C4", "E4", "G4"], "C major")
         assert isinstance(result, list)
@@ -185,7 +182,6 @@ class TestEnharmonicSpelling:
 
 
 class TestIntervalAnalysis:
-
     def test_analyze_intervals_basic(self):
         result = analyze_intervals(["C4", "E4", "G4"])
         assert isinstance(result, list)
@@ -197,7 +193,6 @@ class TestIntervalAnalysis:
 
 
 class TestPlayability:
-
     def test_check_playability_violin(self):
         result = check_playability("violin", ["G3", "D4", "A4", "E5"])
         assert "playable" in result
@@ -213,7 +208,6 @@ class TestPlayability:
 
 
 class TestValidateScore:
-
     def test_validate_score_basic(self):
         voices = {
             "soprano": ["C5", "D5", "E5"],
@@ -231,7 +225,6 @@ class TestValidateScore:
 
 
 class TestParallelMotion:
-
     def test_detect_parallel_fifths(self):
         result = detect_parallel_motion(["C4", "D4"], ["G4", "A4"])
         assert "parallel_fifths" in result or "warning" in result
@@ -242,7 +235,6 @@ class TestParallelMotion:
 
 
 class TestTransposeForInstrument:
-
     def test_transpose_clarinet(self):
         result = transpose_for_instrument("C4", "clarinet", to_concert=True)
         assert "transposed" in result or "warning" in result or "error" in result
@@ -258,7 +250,6 @@ class TestTransposeForInstrument:
 
 
 class TestFiguredBass:
-
     def test_realize_root_position(self):
         result = realize_figured_bass("C3", "")
         assert "pitches" in result or "warning" in result
@@ -273,7 +264,6 @@ class TestFiguredBass:
 
 
 class TestSuggestCadence:
-
     def test_suggest_cadence_from_v(self):
         from dorico_mcp.tools import suggest_cadence
 
@@ -306,7 +296,6 @@ class TestSuggestCadence:
 
 
 class TestSuggestDoubling:
-
     def test_suggest_doubling_violin(self):
         from dorico_mcp.tools import suggest_doubling
 
@@ -330,7 +319,6 @@ class TestSuggestDoubling:
 
 
 class TestFindDissonances:
-
     def test_find_dissonances_consonant(self):
         from dorico_mcp.tools import find_dissonances
 
@@ -369,7 +357,6 @@ class TestFindDissonances:
 
 
 class TestSuggestInstrumentation:
-
     def test_suggest_instrumentation_medium(self):
         from dorico_mcp.tools import suggest_instrumentation
 
@@ -393,7 +380,6 @@ class TestSuggestInstrumentation:
 
 
 class TestBalanceDynamics:
-
     def test_balance_dynamics_basic(self):
         from dorico_mcp.tools import balance_dynamics
 
@@ -417,7 +403,6 @@ class TestBalanceDynamics:
 
 
 class TestCheckBeaming:
-
     def test_check_beaming_4_4(self):
         from dorico_mcp.tools import check_beaming
 
@@ -440,7 +425,6 @@ class TestCheckBeaming:
 
 
 class TestCheckSpacing:
-
     def test_check_spacing_good(self):
         from dorico_mcp.tools import check_spacing
 

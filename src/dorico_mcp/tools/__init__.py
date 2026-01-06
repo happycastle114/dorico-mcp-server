@@ -461,11 +461,13 @@ def check_species_rules(
     try:
         # For first species, lengths must match
         if species == 1 and len(cantus_firmus) != len(counterpoint):
-            issues.append({
-                "type": "length_mismatch",
-                "severity": "error",
-                "description": f"First species requires equal lengths. CF: {len(cantus_firmus)}, CP: {len(counterpoint)}",
-            })
+            issues.append(
+                {
+                    "type": "length_mismatch",
+                    "severity": "error",
+                    "description": f"First species requires equal lengths. CF: {len(cantus_firmus)}, CP: {len(counterpoint)}",
+                }
+            )
             return {"issues": issues, "valid": False}
 
         # Analyze intervals
@@ -475,13 +477,15 @@ def check_species_rules(
             cp_p = music21.pitch.Pitch(cp_pitch)
             interval = music21.interval.Interval(cf_p, cp_p)
 
-            intervals_analysis.append({
-                "position": i + 1,
-                "cf": cf_pitch,
-                "cp": cp_pitch,
-                "interval": interval.simpleName,
-                "direction": interval.direction,
-            })
+            intervals_analysis.append(
+                {
+                    "position": i + 1,
+                    "cf": cf_pitch,
+                    "cp": cp_pitch,
+                    "interval": interval.simpleName,
+                    "direction": interval.direction,
+                }
+            )
 
             # Check first species rules
             if species == 1:
@@ -490,26 +494,32 @@ def check_species_rules(
                 end_allowed = rules.get("end_intervals", [])
 
                 if interval.simpleName not in allowed:
-                    issues.append({
-                        "type": "dissonance",
-                        "position": i + 1,
-                        "severity": "error",
-                        "description": f"Dissonant interval {interval.simpleName} at position {i + 1}",
-                    })
+                    issues.append(
+                        {
+                            "type": "dissonance",
+                            "position": i + 1,
+                            "severity": "error",
+                            "description": f"Dissonant interval {interval.simpleName} at position {i + 1}",
+                        }
+                    )
 
                 if i == 0 and interval.simpleName not in start_allowed:
-                    issues.append({
-                        "type": "bad_opening",
-                        "severity": "error",
-                        "description": f"Must start with P1, P5, or P8. Got {interval.simpleName}",
-                    })
+                    issues.append(
+                        {
+                            "type": "bad_opening",
+                            "severity": "error",
+                            "description": f"Must start with P1, P5, or P8. Got {interval.simpleName}",
+                        }
+                    )
 
                 if i == len(cantus_firmus) - 1 and interval.simpleName not in end_allowed:
-                    issues.append({
-                        "type": "bad_ending",
-                        "severity": "error",
-                        "description": f"Must end with P1 or P8. Got {interval.simpleName}",
-                    })
+                    issues.append(
+                        {
+                            "type": "bad_ending",
+                            "severity": "error",
+                            "description": f"Must end with P1 or P8. Got {interval.simpleName}",
+                        }
+                    )
 
         # Check for parallel fifths and octaves
         for i in range(len(intervals_analysis) - 1):
@@ -517,20 +527,24 @@ def check_species_rules(
             next_int = intervals_analysis[i + 1]
 
             if curr["interval"] == "P5" and next_int["interval"] == "P5":
-                issues.append({
-                    "type": "parallel_fifths",
-                    "position": f"{i + 1}-{i + 2}",
-                    "severity": "error",
-                    "description": "Parallel perfect fifths",
-                })
+                issues.append(
+                    {
+                        "type": "parallel_fifths",
+                        "position": f"{i + 1}-{i + 2}",
+                        "severity": "error",
+                        "description": "Parallel perfect fifths",
+                    }
+                )
 
             if curr["interval"] in ["P1", "P8"] and next_int["interval"] in ["P1", "P8"]:
-                issues.append({
-                    "type": "parallel_octaves",
-                    "position": f"{i + 1}-{i + 2}",
-                    "severity": "error",
-                    "description": "Parallel octaves/unisons",
-                })
+                issues.append(
+                    {
+                        "type": "parallel_octaves",
+                        "position": f"{i + 1}-{i + 2}",
+                        "severity": "error",
+                        "description": "Parallel octaves/unisons",
+                    }
+                )
 
         # Check melodic motion in counterpoint
         for i in range(len(counterpoint) - 1):
@@ -540,12 +554,14 @@ def check_species_rules(
 
             # Check for large leaps
             if melodic_interval > 12:  # larger than octave
-                issues.append({
-                    "type": "large_leap",
-                    "position": f"{i + 1}-{i + 2}",
-                    "severity": "warning",
-                    "description": f"Leap of {melodic_interval} semitones exceeds octave",
-                })
+                issues.append(
+                    {
+                        "type": "large_leap",
+                        "position": f"{i + 1}-{i + 2}",
+                        "severity": "warning",
+                        "description": f"Leap of {melodic_interval} semitones exceeds octave",
+                    }
+                )
 
         return {
             "species": species,
@@ -600,7 +616,11 @@ def generate_counterpoint(
                     candidates = []
                     for interval_name in ["M3", "m3", "M6", "m6", "P5"]:
                         try:
-                            candidate = cf_p.transpose(interval_name) if above else cf_p.transpose("-" + interval_name)
+                            candidate = (
+                                cf_p.transpose(interval_name)
+                                if above
+                                else cf_p.transpose("-" + interval_name)
+                            )
                             candidates.append(candidate)
                         except Exception:
                             pass
@@ -679,10 +699,10 @@ def validate_score_section(
 
     # Check range for each voice (basic check)
     voice_ranges = {
-        "soprano": (60, 81),   # C4 - A5
-        "alto": (55, 74),      # G3 - D5
-        "tenor": (48, 67),     # C3 - G4
-        "bass": (40, 60),      # E2 - C4
+        "soprano": (60, 81),  # C4 - A5
+        "alto": (55, 74),  # G3 - D5
+        "tenor": (48, 67),  # C3 - G4
+        "bass": (40, 60),  # E2 - C4
     }
 
     if MUSIC21_AVAILABLE:
@@ -694,23 +714,27 @@ def validate_score_section(
                     try:
                         p = music21.pitch.Pitch(pitch)
                         if p.midi < low:
-                            all_issues.append({
-                                "type": "out_of_range",
-                                "voice": voice_name,
-                                "position": i + 1,
-                                "pitch": pitch,
-                                "severity": "warning",
-                                "description": f"{pitch} is below {voice_name} range",
-                            })
+                            all_issues.append(
+                                {
+                                    "type": "out_of_range",
+                                    "voice": voice_name,
+                                    "position": i + 1,
+                                    "pitch": pitch,
+                                    "severity": "warning",
+                                    "description": f"{pitch} is below {voice_name} range",
+                                }
+                            )
                         elif p.midi > high:
-                            all_issues.append({
-                                "type": "out_of_range",
-                                "voice": voice_name,
-                                "position": i + 1,
-                                "pitch": pitch,
-                                "severity": "warning",
-                                "description": f"{pitch} is above {voice_name} range",
-                            })
+                            all_issues.append(
+                                {
+                                    "type": "out_of_range",
+                                    "voice": voice_name,
+                                    "position": i + 1,
+                                    "pitch": pitch,
+                                    "severity": "warning",
+                                    "description": f"{pitch} is above {voice_name} range",
+                                }
+                            )
                     except Exception:
                         pass
 
@@ -759,29 +783,42 @@ def check_enharmonic_spelling(
             # Check if this spelling makes sense in the key
             # Common enharmonic issues
             enharmonic_pairs = {
-                "C#": "Db", "Db": "C#",
-                "D#": "Eb", "Eb": "D#",
-                "F#": "Gb", "Gb": "F#",
-                "G#": "Ab", "Ab": "G#",
-                "A#": "Bb", "Bb": "A#",
-                "B": "Cb", "Cb": "B",
-                "E": "Fb", "Fb": "E",
-                "B#": "C", "C": "B#",
-                "E#": "F", "F": "E#",
+                "C#": "Db",
+                "Db": "C#",
+                "D#": "Eb",
+                "Eb": "D#",
+                "F#": "Gb",
+                "Gb": "F#",
+                "G#": "Ab",
+                "Ab": "G#",
+                "A#": "Bb",
+                "Bb": "A#",
+                "B": "Cb",
+                "Cb": "B",
+                "E": "Fb",
+                "Fb": "E",
+                "B#": "C",
+                "C": "B#",
+                "E#": "F",
+                "F": "E#",
             }
 
             if pitch_name in enharmonic_pairs:
                 alternative = enharmonic_pairs[pitch_name]
                 # Check if alternative is in scale
                 alt_base = alternative[0]
-                if alt_base in [sp[0] for sp in scale_pitches] and pitch_name[0] not in [sp[0] for sp in scale_pitches]:
-                    issues.append({
-                        "position": i + 1,
-                        "current": pitch_str,
-                        "suggested": alternative + pitch_str[-1],  # keep octave
-                        "reason": f"In {key_str}, {alternative} may be more appropriate than {pitch_name}",
-                        "severity": "suggestion",
-                    })
+                if alt_base in [sp[0] for sp in scale_pitches] and pitch_name[0] not in [
+                    sp[0] for sp in scale_pitches
+                ]:
+                    issues.append(
+                        {
+                            "position": i + 1,
+                            "current": pitch_str,
+                            "suggested": alternative + pitch_str[-1],  # keep octave
+                            "reason": f"In {key_str}, {alternative} may be more appropriate than {pitch_name}",
+                            "severity": "suggestion",
+                        }
+                    )
 
     except Exception as e:
         issues.append({"error": str(e)})
@@ -815,15 +852,21 @@ def analyze_intervals(pitches: list[str]) -> list[dict[str, Any]]:
             semitones = p2.midi - p1.midi
             is_consonant = interval.simpleName in ["P1", "m3", "M3", "P5", "m6", "M6", "P8"]
 
-            intervals.append({
-                "from": pitches[i],
-                "to": pitches[i + 1],
-                "name": interval.niceName,
-                "simple_name": interval.simpleName,
-                "semitones": semitones,
-                "direction": "ascending" if semitones > 0 else "descending" if semitones < 0 else "unison",
-                "consonant": is_consonant,
-            })
+            intervals.append(
+                {
+                    "from": pitches[i],
+                    "to": pitches[i + 1],
+                    "name": interval.niceName,
+                    "simple_name": interval.simpleName,
+                    "semitones": semitones,
+                    "direction": "ascending"
+                    if semitones > 0
+                    else "descending"
+                    if semitones < 0
+                    else "unison",
+                    "consonant": is_consonant,
+                }
+            )
 
         return intervals
 
@@ -860,21 +903,25 @@ def check_playability(
     for i, pitch in enumerate(pitches):
         result = check_range(instrument, pitch)
         if not result.get("in_range", True):
-            issues.append({
-                "position": i + 1,
-                "pitch": pitch,
-                "type": "out_of_range",
-                "severity": "error",
-                "message": result.get("issue", f"{pitch} is out of range"),
-            })
+            issues.append(
+                {
+                    "position": i + 1,
+                    "pitch": pitch,
+                    "type": "out_of_range",
+                    "severity": "error",
+                    "message": result.get("issue", f"{pitch} is out of range"),
+                }
+            )
         elif not result.get("in_comfortable_range", True):
-            issues.append({
-                "position": i + 1,
-                "pitch": pitch,
-                "type": "extreme_range",
-                "severity": "warning",
-                "message": result.get("warning", f"{pitch} is in extreme range"),
-            })
+            issues.append(
+                {
+                    "position": i + 1,
+                    "pitch": pitch,
+                    "type": "extreme_range",
+                    "severity": "warning",
+                    "message": result.get("warning", f"{pitch} is in extreme range"),
+                }
+            )
 
     if MUSIC21_AVAILABLE and len(pitches) >= 2:
         for i in range(len(pitches) - 1):
@@ -883,12 +930,14 @@ def check_playability(
             leap = abs(p2.midi - p1.midi)
 
             if leap > 24:
-                issues.append({
-                    "position": f"{i + 1}-{i + 2}",
-                    "type": "large_leap",
-                    "severity": "warning",
-                    "message": f"Large leap of {leap} semitones may be difficult",
-                })
+                issues.append(
+                    {
+                        "position": f"{i + 1}-{i + 2}",
+                        "type": "large_leap",
+                        "severity": "warning",
+                        "message": f"Large leap of {leap} semitones may be difficult",
+                    }
+                )
 
     return {
         "instrument": instrument,
@@ -940,13 +989,15 @@ def validate_score(
                         try:
                             p = music21.pitch.Pitch(pitch)  # type: ignore[union-attr]
                             if p.midi < low or p.midi > high:
-                                all_issues.append({
-                                    "type": "range_violation",
-                                    "voice": voice_name,
-                                    "position": i + 1,
-                                    "pitch": pitch,
-                                    "severity": "warning",
-                                })
+                                all_issues.append(
+                                    {
+                                        "type": "range_violation",
+                                        "voice": voice_name,
+                                        "position": i + 1,
+                                        "pitch": pitch,
+                                        "severity": "warning",
+                                    }
+                                )
                         except Exception:
                             pass
 
@@ -1001,18 +1052,22 @@ def detect_parallel_motion(
             int_end = music21.interval.Interval(p1_end, p2_end)  # type: ignore[union-attr]
 
             if int_start.simpleName == "P5" and int_end.simpleName == "P5":
-                parallel_fifths.append({
-                    "position": f"{i + 1}-{i + 2}",
-                    "from": f"{voice1[i]}-{voice2[i]}",
-                    "to": f"{voice1[i + 1]}-{voice2[i + 1]}",
-                })
+                parallel_fifths.append(
+                    {
+                        "position": f"{i + 1}-{i + 2}",
+                        "from": f"{voice1[i]}-{voice2[i]}",
+                        "to": f"{voice1[i + 1]}-{voice2[i + 1]}",
+                    }
+                )
 
             if int_start.simpleName in ["P1", "P8"] and int_end.simpleName in ["P1", "P8"]:
-                parallel_octaves.append({
-                    "position": f"{i + 1}-{i + 2}",
-                    "from": f"{voice1[i]}-{voice2[i]}",
-                    "to": f"{voice1[i + 1]}-{voice2[i + 1]}",
-                })
+                parallel_octaves.append(
+                    {
+                        "position": f"{i + 1}-{i + 2}",
+                        "from": f"{voice1[i]}-{voice2[i]}",
+                        "to": f"{voice1[i + 1]}-{voice2[i + 1]}",
+                    }
+                )
 
         return {
             "parallel_fifths": parallel_fifths,
@@ -1195,46 +1250,60 @@ def suggest_cadence(
     if phrase_position == "end":
         # For phrase endings, suggest authentic or deceptive
         if current_chord.upper() in ["V", "V7", "VIIO"]:
-            suggestions.append({
-                "type": "authentic",
-                "next_chord": "i" if is_minor else "I",
-                **CADENCE_TYPES["authentic"],
-            })
-            suggestions.append({
-                "type": "deceptive",
-                "next_chord": "VI" if is_minor else "vi",
-                **CADENCE_TYPES["deceptive"],
-            })
+            suggestions.append(
+                {
+                    "type": "authentic",
+                    "next_chord": "i" if is_minor else "I",
+                    **CADENCE_TYPES["authentic"],
+                }
+            )
+            suggestions.append(
+                {
+                    "type": "deceptive",
+                    "next_chord": "VI" if is_minor else "vi",
+                    **CADENCE_TYPES["deceptive"],
+                }
+            )
         elif current_chord.upper() in ["IV", "II"]:
-            suggestions.append({
-                "type": "half",
-                "next_chord": "V",
-                **CADENCE_TYPES["half"],
-            })
-            suggestions.append({
-                "type": "plagal",
-                "next_chord": "i" if is_minor else "I",
-                **CADENCE_TYPES["plagal"],
-            })
+            suggestions.append(
+                {
+                    "type": "half",
+                    "next_chord": "V",
+                    **CADENCE_TYPES["half"],
+                }
+            )
+            suggestions.append(
+                {
+                    "type": "plagal",
+                    "next_chord": "i" if is_minor else "I",
+                    **CADENCE_TYPES["plagal"],
+                }
+            )
         elif current_chord.upper() in ["I", "I6"]:
-            suggestions.append({
-                "type": "half",
-                "next_chord": "V",
-                **CADENCE_TYPES["half"],
-            })
+            suggestions.append(
+                {
+                    "type": "half",
+                    "next_chord": "V",
+                    **CADENCE_TYPES["half"],
+                }
+            )
     elif phrase_position == "middle":
         # For middle of phrase, half cadence is common
-        suggestions.append({
-            "type": "half",
-            "next_chord": "V",
-            **CADENCE_TYPES["half"],
-        })
-        if is_minor:
-            suggestions.append({
-                "type": "phrygian",
+        suggestions.append(
+            {
+                "type": "half",
                 "next_chord": "V",
-                **CADENCE_TYPES["phrygian"],
-            })
+                **CADENCE_TYPES["half"],
+            }
+        )
+        if is_minor:
+            suggestions.append(
+                {
+                    "type": "phrygian",
+                    "next_chord": "V",
+                    **CADENCE_TYPES["phrygian"],
+                }
+            )
 
     if not suggestions:
         # Default suggestions
@@ -1429,9 +1498,7 @@ def find_dissonances(
         for i in range(len(midi_pitches)):
             for j in range(i + 1, len(midi_pitches)):
                 interval = abs(midi_pitches[j] - midi_pitches[i]) % 12
-                interval_name = INTERVAL_NAMES_SEMITONES.get(
-                    interval, f"{interval} semitones"
-                )
+                interval_name = INTERVAL_NAMES_SEMITONES.get(interval, f"{interval} semitones")
 
                 interval_info = {
                     "pitch1": pitches[i],
@@ -1451,31 +1518,22 @@ def find_dissonances(
                     # Add context-specific advice
                     if context == "counterpoint":
                         if interval == 1:  # m2
-                            dissonance["advice"] = (
-                                "Avoid minor 2nds in strict counterpoint"
-                            )
+                            dissonance["advice"] = "Avoid minor 2nds in strict counterpoint"
                         elif interval == 2:  # M2
                             dissonance["advice"] = "Use as passing or neighbor tone"
                         elif interval == 5:  # P4
-                            dissonance["advice"] = (
-                                "P4 is dissonant against bass in counterpoint"
-                            )
+                            dissonance["advice"] = "P4 is dissonant against bass in counterpoint"
                         elif interval == 6:  # tritone
                             dissonance["advice"] = (
-                                "Resolve tritone by step "
-                                "(augmented resolves out, diminished in)"
+                                "Resolve tritone by step (augmented resolves out, diminished in)"
                             )
                         elif interval in [10, 11]:  # 7ths
                             dissonance["advice"] = "7ths must resolve down by step"
                     elif context == "harmony":
                         if interval in [10, 11]:
-                            dissonance["advice"] = (
-                                "7th chord - resolve 7th down by step"
-                            )
+                            dissonance["advice"] = "7th chord - resolve 7th down by step"
                         elif interval == 6:
-                            dissonance["advice"] = (
-                                "Tritone - dominant function, resolve to tonic"
-                            )
+                            dissonance["advice"] = "Tritone - dominant function, resolve to tonic"
 
                     dissonances.append(dissonance)
 
@@ -1523,18 +1581,47 @@ ENSEMBLE_PRESETS = {
     },
     "full_orchestra": {
         "instruments": [
-            "flute", "flute", "oboe", "oboe", "clarinet", "clarinet",
-            "bassoon", "bassoon", "horn", "horn", "horn", "horn",
-            "trumpet", "trumpet", "trombone", "trombone", "trombone", "tuba",
-            "timpani", "violin", "violin", "viola", "cello", "double_bass",
+            "flute",
+            "flute",
+            "oboe",
+            "oboe",
+            "clarinet",
+            "clarinet",
+            "bassoon",
+            "bassoon",
+            "horn",
+            "horn",
+            "horn",
+            "horn",
+            "trumpet",
+            "trumpet",
+            "trombone",
+            "trombone",
+            "trombone",
+            "tuba",
+            "timpani",
+            "violin",
+            "violin",
+            "viola",
+            "cello",
+            "double_bass",
         ],
         "description": "Full symphony orchestra",
         "best_for": ["symphonic works", "large-scale pieces", "maximum dynamic range"],
     },
     "chamber_orchestra": {
         "instruments": [
-            "flute", "oboe", "clarinet", "bassoon", "horn", "horn",
-            "violin", "violin", "viola", "cello", "double_bass",
+            "flute",
+            "oboe",
+            "clarinet",
+            "bassoon",
+            "horn",
+            "horn",
+            "violin",
+            "violin",
+            "viola",
+            "cello",
+            "double_bass",
         ],
         "description": "Smaller orchestral forces",
         "best_for": ["baroque/classical style", "clearer textures", "intimate orchestral"],
@@ -1561,52 +1648,68 @@ def suggest_instrumentation(
     suggestions = []
 
     if size == "solo":
-        suggestions.append({
-            "ensemble": "Solo instrument",
-            "instruments": ["piano"],
-            "alternatives": ["violin", "cello", "guitar", "flute"],
-            "rationale": "Maximum expressive freedom for a single voice",
-        })
+        suggestions.append(
+            {
+                "ensemble": "Solo instrument",
+                "instruments": ["piano"],
+                "alternatives": ["violin", "cello", "guitar", "flute"],
+                "rationale": "Maximum expressive freedom for a single voice",
+            }
+        )
     elif size == "small":
         if character in ["intimate", "lyrical"]:
-            suggestions.append({
-                **ENSEMBLE_PRESETS["piano_trio"],
-                "ensemble": "Piano Trio",
-                "rationale": "Warm, intimate sound ideal for lyrical expression",
-            })
-        suggestions.append({
-            **ENSEMBLE_PRESETS["string_quartet"],
-            "ensemble": "String Quartet",
-            "rationale": "Versatile, balanced, ideal for contrapuntal writing",
-        })
+            suggestions.append(
+                {
+                    **ENSEMBLE_PRESETS["piano_trio"],
+                    "ensemble": "Piano Trio",
+                    "rationale": "Warm, intimate sound ideal for lyrical expression",
+                }
+            )
+        suggestions.append(
+            {
+                **ENSEMBLE_PRESETS["string_quartet"],
+                "ensemble": "String Quartet",
+                "rationale": "Versatile, balanced, ideal for contrapuntal writing",
+            }
+        )
     elif size == "medium":
-        suggestions.append({
-            **ENSEMBLE_PRESETS["wind_quintet"],
-            "ensemble": "Wind Quintet",
-            "rationale": "Colorful palette with distinct timbres",
-        })
+        suggestions.append(
+            {
+                **ENSEMBLE_PRESETS["wind_quintet"],
+                "ensemble": "Wind Quintet",
+                "rationale": "Colorful palette with distinct timbres",
+            }
+        )
         if character in ["powerful", "dramatic"]:
-            suggestions.append({
-                **ENSEMBLE_PRESETS["brass_quintet"],
-                "ensemble": "Brass Quintet",
-                "rationale": "Strong, noble sound for dramatic passages",
-            })
-        suggestions.append({
-            **ENSEMBLE_PRESETS["chamber_orchestra"],
-            "ensemble": "Chamber Orchestra",
-            "rationale": "Orchestral colors with chamber clarity",
-        })
+            suggestions.append(
+                {
+                    **ENSEMBLE_PRESETS["brass_quintet"],
+                    "ensemble": "Brass Quintet",
+                    "rationale": "Strong, noble sound for dramatic passages",
+                }
+            )
+        suggestions.append(
+            {
+                **ENSEMBLE_PRESETS["chamber_orchestra"],
+                "ensemble": "Chamber Orchestra",
+                "rationale": "Orchestral colors with chamber clarity",
+            }
+        )
     elif size in ["large", "orchestra"]:
-        suggestions.append({
-            **ENSEMBLE_PRESETS["full_orchestra"],
-            "ensemble": "Full Orchestra",
-            "rationale": "Maximum dynamic and timbral range",
-        })
-        suggestions.append({
-            **ENSEMBLE_PRESETS["chamber_orchestra"],
-            "ensemble": "Chamber Orchestra",
-            "rationale": "Lighter alternative with orchestral palette",
-        })
+        suggestions.append(
+            {
+                **ENSEMBLE_PRESETS["full_orchestra"],
+                "ensemble": "Full Orchestra",
+                "rationale": "Maximum dynamic and timbral range",
+            }
+        )
+        suggestions.append(
+            {
+                **ENSEMBLE_PRESETS["chamber_orchestra"],
+                "ensemble": "Chamber Orchestra",
+                "rationale": "Lighter alternative with orchestral palette",
+            }
+        )
 
     style_tips = {
         "baroque": "Consider harpsichord continuo, smaller string sections",
@@ -1692,13 +1795,15 @@ def balance_dynamics(
         suggested_level = max(1, min(6, target_level + adjustment))
         suggested_dynamic = dynamic_names[suggested_level]
 
-        suggestions.append({
-            "instrument": inst,
-            "suggested_dynamic": suggested_dynamic,
-            "role": role,
-            "projection": info["projection"],
-            "notes": f"{'Increase' if adjustment > 0 else 'Reduce' if adjustment < 0 else 'Match'} relative to target",
-        })
+        suggestions.append(
+            {
+                "instrument": inst,
+                "suggested_dynamic": suggested_dynamic,
+                "role": role,
+                "projection": info["projection"],
+                "notes": f"{'Increase' if adjustment > 0 else 'Reduce' if adjustment < 0 else 'Match'} relative to target",
+            }
+        )
 
     return {
         "target_dynamic": target_dynamic,

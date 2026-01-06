@@ -558,9 +558,19 @@ WORKFLOW: Always connect first with connect_to_dorico() before other operations.
         Returns:
             Success status
         """
-        valid_articulations = ["staccato", "accent", "tenuto", "marcato", "staccatissimo", "fermata"]
+        valid_articulations = [
+            "staccato",
+            "accent",
+            "tenuto",
+            "marcato",
+            "staccatissimo",
+            "fermata",
+        ]
         if articulation.lower() not in valid_articulations:
-            return {"success": False, "error": f"Unknown articulation. Use: {', '.join(valid_articulations)}"}
+            return {
+                "success": False,
+                "error": f"Unknown articulation. Use: {', '.join(valid_articulations)}",
+            }
 
         try:
             artic_enum = Articulation(articulation.lower())
@@ -932,7 +942,10 @@ WORKFLOW: Always connect first with connect_to_dorico() before other operations.
         try:
             async with get_client() as client:
                 response = await client.send_command(cmd.set_options("layout", options, layout_id))
-                return {"success": response.success, "message": f"Layout {layout_id} options updated"}
+                return {
+                    "success": response.success,
+                    "message": f"Layout {layout_id} options updated",
+                }
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -951,7 +964,10 @@ WORKFLOW: Always connect first with connect_to_dorico() before other operations.
         try:
             async with get_client() as client:
                 response = await client.send_command(cmd.set_options("notation", options, flow_id))
-                return {"success": response.success, "message": f"Flow {flow_id} notation options updated"}
+                return {
+                    "success": response.success,
+                    "message": f"Flow {flow_id} notation options updated",
+                }
         except Exception as e:
             return {"success": False, "error": str(e)}
 

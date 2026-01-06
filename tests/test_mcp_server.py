@@ -197,7 +197,6 @@ class TestMCPResourceDefinitions:
 
 
 class TestCachingFunctions:
-
     def test_instrument_info_cached(self):
         from dorico_mcp.server import _get_instrument_info_cached
 
